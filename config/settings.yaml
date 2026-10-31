@@ -55,12 +55,17 @@ spark:
 embedding:
   model: BAAI/bge-m3
   dim: 1024
+  batch_size: 16
+  max_seq_length: 512   # đủ cho một Điểm kèm câu dẫn; cao hơn thì chậm mà ít lợi
 
 retrieval:
   k: 20
   branch_top_n: 50
   rrf_k: 60
   rerank: false
+  # Từ hỏi, không giúp phân biệt điều khoản; nhánh keyword nối từ bằng OR (D-020)
+  stopwords: [bị, phạt, bao, nhiêu, thì, là, có, không, gì, nào, sao, như, thế, tôi, mình, em, anh, chị,
+              cho, của, và, hay, hoặc, khi, nếu, mà, ở, tại, trên, với, được, những, các, một, hỏi, ạ, nhé]
 
 llm:
   provider: anthropic

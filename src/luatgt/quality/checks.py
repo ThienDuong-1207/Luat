@@ -7,7 +7,7 @@ from collections import Counter, defaultdict
 from dataclasses import replace
 
 from luatgt.modeling.versions import VersionIssue, check_no_overlap
-from luatgt.parsing.violations import Violation
+from luatgt.modeling.violations import Violation
 
 __all__ = ["check_amendment_targets", "check_dieu_sequence", "check_no_overlap", "check_violations", "summarize"]
 

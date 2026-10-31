@@ -91,7 +91,7 @@ def test_chunk_tsv_generated_and_searchable(engine):
                 VALUES ('t@v1', 'T/D1', 1, 1, '1/2024/NĐ-CP', 'Điều 1',
                     'Phạt tiền người điều khiển xe mô tô', 'x', '2025-01-01', '9999-12-31')"""))
             hit = conn.execute(text(
-                "SELECT count(*) FROM chunks WHERE tsv @@ plainto_tsquery('simple', f_unaccent(:q))"
+                "SELECT count(*) FROM chunks WHERE chunk_id = 't@v1' AND tsv @@ plainto_tsquery('simple', f_unaccent(:q))"
             ), {"q": "xe mo to"}).scalar_one()
             assert hit == 1
         finally:

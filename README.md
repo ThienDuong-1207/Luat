@@ -47,6 +47,14 @@ Silver → Gold (phiên bản điều khoản theo thời gian) và nạp Postgr
 ```
 Văn bản sửa nhiều văn bản (Luật 118, NĐ 184) được xác định đích theo từng Điều; Điều sửa văn bản ngoài seed list bị bỏ qua (D-017). Sửa cụm từ được áp tự động lúc dựng phiên bản (D-018). Mục chưa tự động được (đoạn, phụ lục, ngày hiệu lực riêng cho một phần nội dung) nằm ở bảng `quarantine` (stage `amend`). OCR cho PDF scan cần `tesseract` (`brew install tesseract tesseract-lang`, tuỳ chọn).
 
+Index và tìm kiếm (cần `pip install -e ".[ml]"`; lần đầu tải model `BAAI/bge-m3` khoảng 4,5 GB):
+
+```bash
+.venv/bin/luatgt build-index                                            # chỉ embed lại chunk có nội dung đổi
+.venv/bin/luatgt search "Xe máy vượt đèn đỏ bị phạt bao nhiêu?" --as-of 2026-10-20
+.venv/bin/python eval/run_eval.py                                       # Recall@5, xuất eval/reports/retrieval.md
+```
+
 MinIO console: http://localhost:9001 (tài khoản lấy từ `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`).
 
 ## Tiến độ
@@ -56,7 +64,7 @@ MinIO console: http://localhost:9001 (tài khoản lấy từ `MINIO_ACCESS_KEY`
 - [x] M3. Parsing → Silver (`luatgt reparse --all`)
 - [x] M4. Sửa đổi + phiên bản (SCD2) (`luatgt build-gold`, `luatgt provision <key> --as-of <ngày>`)
 - [x] M5. Violations + quality (`luatgt build-gold`, mẫu kiểm tra: [docs/M5_SAMPLE_CHECK.md](docs/M5_SAMPLE_CHECK.md))
-- [ ] M6. Index + retrieval
+- [x] M6. Index + retrieval (`luatgt build-index`, `luatgt search`, `eval/run_eval.py`)
 - [ ] M7. Follow-up engine + answer + API
 - [ ] M8. Frontend
 - [ ] M9. Streaming + dashboard

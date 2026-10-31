@@ -153,6 +153,23 @@ Ghi theo quy tắc mục 0.8 của `LuatGT_System_Design.md`. Mỗi mục: vấn
 - **Giới hạn:** LLM (spec 8.5 bước 5, tuỳ chọn) chưa dùng. Hành vi là cả Điểm, Điểm gom nhiều hành vi không được tách. `doi_tuong` để trống ở các Điều cơ sở đào tạo, đăng kiểm (66 dòng).
 - **Nghiệm thu "kiểm tra tay":** Claude đối chiếu với text đã parse. Nhóm cần người đọc lại mẫu nếu muốn đúng nghĩa kiểm tra tay.
 
+## D-020. Index và retrieval (M6, 31/10/2026)
+- **Lệch spec 9.2 (keyword):** dùng `to_tsquery` nối từ bằng OR, bỏ từ dừng (`retrieval.stopwords`), thay cho `plainto_tsquery`. Plainto là AND: câu hỏi tự nhiên hiếm khi có đủ mọi từ trong một điều khoản nên nhánh keyword gần như luôn rỗng.
+- **Nhánh vector:** quét đúng sau khi lọc hiệu lực (CTE `MATERIALIZED`), không đi qua HNSW, vì HNSW lọc sau khi duyệt và có thể thiếu kết quả. Bảng 3.545 dòng nên vẫn nhanh. Cần xem lại nếu dữ liệu lớn nhiều lần.
+- **Lệch spec 8.7:** `build_index` đọc Gold đã nạp Postgres, không chạy Spark: embedding chạy trong một tiến trình, Spark không giúp gì. So sánh trực tiếp `embed_text` thay cho hash.
+- **Chunk:** bỏ 4 văn bản sửa đổi (Luật 118, NĐ 184, NĐ 236, NĐ 238) vì nội dung đã vào phiên bản của văn bản đích. Hệ quả: phần riêng của chúng không tìm được, gồm điều khoản chuyển tiếp NĐ 238 và NĐ 236, nội dung phân định thẩm quyền của NĐ 184. Một phiên bản Điểm tách nhiều chunk khi câu dẫn Khoản đổi (`{key}@v{n}#2`).
+- **`max_seq_length = 512`** (`embedding` trong settings), không phải 8192 mặc định của bge-m3.
+- **Kết quả trên 66 câu bản nháp (46 câu chung, 20 câu kiểm tra phiên bản):**
+| Cấu hình | Recall@5 | Recall@20 | MRR@5 | Đúng phiên bản | Bản sai xếp trước |
+|---|---|---|---|---|---|
+| Vector, có lọc | 74,2% | 89,4% | 0,552 | 80,0% | 0 |
+| Keyword, có lọc | 68,2% | 80,3% | 0,477 | 80,0% | 0 |
+| Hybrid, không lọc hiệu lực | 74,2% | 90,9% | 0,522 | 80,0% | 9 |
+| Hybrid + lọc hiệu lực | 77,3% | 90,9% | 0,575 | 85,0% | 0 |
+- **Vì sao trượt (15 câu):** (1) cùng hành vi ở nhiều Điều theo loại xe, xếp nhầm Điều (xe máy ↔ xe máy chuyên dùng); (2) từ đời thường khác chữ luật: "vượt đèn đỏ" ↔ "không chấp hành hiệu lệnh của đèn tín hiệu", "bằng lái" ↔ "giấy phép lái xe"; (3) đáp án nháp quá hẹp: "chở vượt trọng tải" có nhiều bậc theo tỷ lệ % ở các khoản khác nhau.
+- **Việc nên làm:** nhóm (1) dùng slot phương tiện để ưu tiên ở M7. Nhóm (2) cần từ điển đồng nghĩa. Chưa làm, vì chỉnh theo chính bộ câu hỏi này dễ làm số liệu đẹp giả.
+- **Đáp án eval là bản nháp** do Claude soạn từ dữ liệu đã parse, chưa được nhóm đối chiếu (spec 16.1). Hybrid không lọc vẫn có Recall@20 cao vì `is_hit` chỉ tính đúng phiên bản; cột cuối mới cho thấy tác dụng của bộ lọc.
+
 ## Câu hỏi mở (cần nhóm quyết định trước milestone liên quan)
 - **Q-1 (M9):** trường `topic` của event được gán thế nào? Đề xuất: chiều/slot chính của violation có điểm retrieval cao nhất, hoặc `unknown`.
 - **Q-2 (M10):** `dag_build` chạy "sau `dag_crawl_daily`" bằng cơ chế nào? Đề xuất: Airflow Dataset (data-aware scheduling).

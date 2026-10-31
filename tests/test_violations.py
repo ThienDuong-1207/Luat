@@ -10,14 +10,14 @@ import pytest
 from luatgt.common.config import load_settings
 from luatgt.crawler.selectors import load_source_config
 from luatgt.modeling.versions import OPEN_END, Version, build_versions
-from luatgt.parsing.amendments import Ref, parse_amendments
-from luatgt.parsing.document import DocumentInputs, parse_document
-from luatgt.parsing.violations import (
+from luatgt.modeling.violations import (
     Violation,
     extract_violations,
     load_violation_config,
     parse_sanction,
 )
+from luatgt.parsing.amendments import Ref, parse_amendments
+from luatgt.parsing.document import DocumentInputs, parse_document
 from luatgt.quality.checks import (
     check_amendment_targets,
     check_dieu_sequence,

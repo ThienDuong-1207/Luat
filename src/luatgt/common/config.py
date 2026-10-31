@@ -72,6 +72,8 @@ class SparkSettings(BaseModel):
 class EmbeddingSettings(BaseModel):
     model: str = "BAAI/bge-m3"
     dim: int = 1024
+    batch_size: int = 16
+    max_seq_length: int = 512
 
 
 class RetrievalSettings(BaseModel):
@@ -79,6 +81,7 @@ class RetrievalSettings(BaseModel):
     branch_top_n: int = 50
     rrf_k: int = 60
     rerank: bool = False
+    stopwords: list[str] = Field(default_factory=list)
 
 
 class LLMSettings(BaseModel):

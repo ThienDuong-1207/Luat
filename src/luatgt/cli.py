@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 import typer
@@ -116,13 +117,43 @@ def build_gold_cmd() -> None:
     )
 
 
+@app.command("build-index")
+def build_index_cmd() -> None:
+    """Gold → chunks + embedding. Chỉ embed lại chunk có nội dung đổi."""
+    from luatgt.jobs.build_index import build_index
+
+    typer.echo(build_index(get_settings()))
+
+
+@app.command("search")
+def search_cmd(
+    question: str,
+    as_of: str = typer.Option(None, "--as-of", help="YYYY-MM-DD; mặc định lấy từ câu hỏi hoặc hôm nay"),
+    k: int = typer.Option(5, "--k"),
+) -> None:
+    """Tìm điều khoản theo câu hỏi tại một thời điểm."""
+    from luatgt.common.db import make_engine
+    from luatgt.retrieval.embed import SentenceTransformerEmbedder
+    from luatgt.retrieval.query import parse_question
+    from luatgt.retrieval.search import hybrid_search
+
+    settings = get_settings()
+    when = date.fromisoformat(as_of) if as_of else parse_question(question).as_of
+    hits = hybrid_search(make_engine(settings), SentenceTransformerEmbedder(settings), question, when,
+                         settings.retrieval, k=k)
+    typer.echo(f"Tại {when}:")
+    for h in hits:
+        fine = next((v for v in h.violations if v["muc_phat_max"]), None)
+        money = f" [{fine['muc_phat_min']:,}–{fine['muc_phat_max']:,} đ]" if fine else ""
+        typer.echo(f"{h.score:.4f} {h.provision_key}@v{h.version_no}{money} {h.display_text[:90]}")
+
+
 @app.command("provision")
 def provision_cmd(
     key: str = typer.Argument(..., help="provision_key, vd 168-2024-ND-CP/D6/K3/Pm"),
     as_of: str | None = typer.Option(None, "--as-of", help="YYYY-MM-DD (mặc định hôm nay)"),
 ) -> None:
     """Nội dung điều khoản có hiệu lực tại một thời điểm, kèm lịch sử phiên bản."""
-    from datetime import date
     from zoneinfo import ZoneInfo
 
     from sqlalchemy import text

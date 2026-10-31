@@ -2,7 +2,7 @@
 
 Luồng: đọc Silver (documents, provisions, amendments) → dựng phiên bản (modeling/versions.py)
 → quality check (chồng lấn thời gian = error → dừng, không publish Gold mới, spec 8.6)
-→ trích xuất violations (parsing/violations.py) → Parquet Gold (staging + bucket gold) → nạp Postgres trong MỘT transaction.
+→ trích xuất violations (modeling/violations.py) → Parquet Gold (staging + bucket gold) → nạp Postgres trong MỘT transaction.
 
 Nạp Postgres: thay toàn bộ provisions/amendments/provision_versions/violations của các văn bản trên Silver bằng
 bản mới trong cùng transaction. Kết quả như upsert theo khoá nhưng xử lý được cả dòng bị xoá; lỗi giữa
@@ -25,7 +25,7 @@ from luatgt.common.logging import get_logger, setup_logging
 from luatgt.common.storage import Storage
 from luatgt.jobs.spark import get_spark, read_silver
 from luatgt.modeling.versions import Version, VersionIssue, build_versions
-from luatgt.parsing.violations import (
+from luatgt.modeling.violations import (
     Violation,
     extract_violations,
     load_violation_config,
