@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.env
+spark-warehouse/
+checkpoints/
+events/
+eval/reports/
+web/node_modules/
+web/.next/
+data/
+
+# Ảnh chụp fixtures: 55 MB, test không dùng, tạo lại được bằng `luatgt crawl --save-fixtures`
+tests/fixtures/**/*.png

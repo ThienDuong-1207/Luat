@@ -1,0 +1,139 @@
+# Cấu hình nguồn vbpl.vn. Selector viết từ fixtures tests/fixtures/vbpl/ (23289, 173920, NĐ 238/2026),
+# xem docs/SOURCE_NOTES.md. Không đoán selector; sửa selector thì tăng selector_version.
+# Tránh class có hash (css-1rb9ewt, effStatus_statusTag__HpzlZ…) vì đổi theo mỗi bản build của trang.
+selector_version: "2026-10-23.v1"
+base_url: "https://vbpl.vn"
+detail_url_template: "https://vbpl.vn/van-ban/chi-tiet/{slug}--{vbpl_id}?tabs={tab}"
+# lấy vbpl_id từ URL: số nguyên (23289) hoặc UUID (văn bản mới, vd NĐ 238/2026) — D-008
+id_regex: "--(\\d+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\\?|$)"
+
+tabs:                                   # ĐÃ XÁC NHẬN 23/10/2026 (role=tab, id rc-tabs-*-tab-{tab})
+  fulltext: "toan-van"                  # "Nội dung"
+  attributes: "thuoc-tinh"              # "Thuộc tính"
+  related: "luoc-do"                    # "Lược đồ"
+  history: "lich-su"                    # "Lịch sử"
+  original_file: "hien-thi-pdf"         # "Văn bản gốc" (pdf.js vẽ lên canvas, không có link)
+  promulgation: "lenh-cong-bo"          # "Lệnh công bố"
+  download: "tai-ve"                    # "Tải về" (nút bấm, không có href)
+
+# Tầng detail tải các tab này (khoá trong `tabs`). Bỏ original_file (canvas pdf.js) và promulgation (trống).
+detail_tabs: [fulltext, attributes, related, history, download]
+# Tầng download chỉ tải các đuôi này (spec 7.5: PDF). Mở rộng .doc/.docx chờ quyết định D-010.
+download_extensions: [pdf]
+
+# Nội dung mỗi tab chỉ render khi tab đang mở → mỗi tab là một lần tải trang `?tabs=…`.
+# Hash chống trùng Bronze/content_hash tính trên panel của tab (toàn trang đổi mỗi lần tải: lượt xem, build id).
+tab_panel: '[id$="-panel-{tab}"]'
+# Tab mà trang trả danh sách theo thứ tự không cố định (Lược đồ: cùng 443 mục, khác thứ tự giữa hai lần tải,
+# quan sát 23/10/2026). Khi hash, sắp xếp <li> trong từng <ul> để không báo thay đổi giả.
+hash_unordered_list_tabs: [related]
+selectors:
+  # Tab Thuộc tính: bảng Ant Design Descriptions, trích theo NHÃN (attribute_labels), không theo vị trí
+  attributes_panel: '[id$="-panel-thuoc-tinh"]'
+  ten_van_ban: '[id$="-panel-thuoc-tinh"] .ant-descriptions-title'
+  attribute_item: '.ant-descriptions-item-container'
+  attribute_label: '.ant-descriptions-item-label'
+  attribute_value: '.ant-descriptions-item-content'
+  # Tab Nội dung: toàn văn là các <p> thường, không có class đánh dấu Điều/Chương → tách bằng regex (M3)
+  fulltext_container: '[id$="-panel-toan-van"] .preview-content'
+  # Tab Lược đồ: nhóm = thẻ card, tiêu đề nhóm là <span> con trực tiếp; mục không có href/ID
+  related_panel: '[id$="-panel-luoc-do"]'
+  related_group: '.ant-card-body'
+  related_group_title: ':scope > span'
+  related_items: 'li > a'
+  # Tab Lịch sử: bảng Ant Table, có link kèm ID văn bản nguồn
+  history_panel: '[id$="-panel-lich-su"]'
+  history_row: 'tr.ant-table-row'
+  history_link: 'a[href*="/van-ban/chi-tiet/"]'
+  # Tab Tải về: mỗi file một khối, tên file trong span đầu tiên; tải bằng nút (page.expect_download ở M2)
+  download_panel: '[id$="-panel-tai-ve"]'
+  download_item: '.grid > div'
+  download_name: '.flex-col > span'
+  download_button: 'button'
+  # Trang chi tiết: nội dung chính để chờ khi tải trang (BrowserSession.fetch wait_selector)
+  page_ready: 'h1'
+  empty_tab_marker: 'Không tìm thấy kết quả phù hợp'
+
+# Khối chú thích vbpl.vn chèn quanh đoạn GỐC đã bị tác động (NĐ 168 có 51 khối). Parser giữ đoạn gốc,
+# ghi nhãn để kiểm chứng parse sửa đổi (M4). Khối = div bo góc chứa nút nhãn.
+fulltext_annotation:
+  block: 'div.rounded-md'
+  label: 'button'
+  labels:
+    - "Điều khoản được sửa đổi, bổ sung"
+    - "Điều khoản được bổ sung"
+    - "Điều khoản được bãi bỏ"
+
+# Tên trường → nhãn hiển thị trên tab Thuộc tính
+attribute_labels:
+  so_hieu: "Số hiệu"
+  loai_van_ban: "Loại văn bản"
+  nganh: "Ngành"
+  linh_vuc: "Lĩnh vực"
+  co_quan_ban_hanh: "Cơ quan ban hành"
+  chuc_danh: "Chức danh"
+  nguoi_ky: "Người ký"
+  ngay_ban_hanh: "Ngày ban hành"
+  ngay_hieu_luc: "Ngày có hiệu lực"
+  ngay_het_hieu_luc: "Ngày hết hiệu lực"
+  tinh_trang: "Tình trạng hiệu lực"
+empty_values: ["--", ""]
+
+tinh_trang_map:                         # nguyên văn → tinh_trang_norm; không khớp → unknown
+  "Còn hiệu lực": con_hieu_luc
+  "Hết hiệu lực toàn bộ": het_hieu_luc
+  "Hết hiệu lực": het_hieu_luc
+  "Hết hiệu lực một phần": het_hieu_luc_mot_phan
+  "Chưa có hiệu lực": chua_co_hieu_luc
+
+# Tiêu đề nhóm ở tab Lược đồ (bỏ "(n)") → relation_type theo góc nhìn văn bản đang xem (src).
+# Cột trái: văn bản đang xem tác động lên dst. Cột phải: dst tác động lên văn bản đang xem.
+# null = không lưu (ngoài tập relation_type của spec). Ánh xạ cần nhóm xác nhận: D-009.
+relation_groups:
+  "Văn bản được hướng dẫn áp dụng": huong_dan
+  "Văn bản được quy định chi tiết, hướng dẫn thi hành": huong_dan
+  "Văn bản bị tác động hiệu lực một phần": sua_doi
+  "Văn bản bị tác động hiệu lực toàn bộ": thay_the
+  "Văn bản hướng dẫn áp dụng": duoc_huong_dan
+  "Văn bản quy định chi tiết, hướng dẫn thi hành": duoc_huong_dan
+  "Văn bản quy định về việc hết hiệu lực một phần": bi_sua_doi
+  "Văn bản quy định về việc hết hiệu lực toàn bộ": bi_thay_the
+  "Văn bản được đính chính": null
+  "Văn bản được dẫn chiếu": null
+  "Căn cứ ban hành": can_cu              # D-009: nhóm đồng ý thêm loại này
+  "Văn bản được giải thích": null
+  "Văn bản bị đình chỉ thi hành": null
+  "Văn bản bị tạm ngưng/ gia hạn/ công bố tiếp tục còn hiệu lực": null
+  "Văn bản hợp nhất": null
+  "Văn bản đính chính": null
+  "Văn bản dẫn chiếu": null
+  "Văn bản áp dụng": null
+  "Văn bản giải thích": null
+  "Văn bản đình chỉ thi hành": null
+  "Văn bản quy định tạm ngưng/ gia hạn/ công bố tiếp tục còn hiệu lực": null
+  "Văn bản công bố": null
+
+# Trạng thái ở tab Lịch sử → relation_type (dst = văn bản nguồn của dòng). null = sự kiện của chính văn bản.
+history_status:
+  "Văn bản bị sửa đổi, bổ sung": bi_sua_doi
+  "Văn bản hết hiệu lực một phần": bi_sua_doi
+  "Văn bản hết hiệu lực toàn bộ": bi_thay_the
+  "Văn bản có hiệu lực": null
+  "Văn bản được ban hành": null
+
+# Số hiệu trong text mục liên quan, vd "Nghị định số 146/2007/NĐ-CP Quy định…"
+so_hieu_in_text_regex: "số\\s+(\\d+/\\d{4}/[A-ZĐ0-9-]+(?:\\([A-Z0-9]+\\))?)"
+so_hieu_regex: "^\\d+/\\d{4}/[A-ZĐ0-9-]+$"   # schema check (spec 7.4)
+
+search:
+  # Không có URL tìm kiếm: trang /van-ban/trung-uong giữ trạng thái trong JS, URL không đổi.
+  # Luồng: gõ #keyword → bấm nút "Tìm kiếm" → bấm tiêu đề kết quả (mở tab mới tới trang chi tiết).
+  # Trang có reCAPTCHA; mode `search` (giai đoạn 2) cần đánh giá lại.
+  url: "https://vbpl.vn/van-ban/trung-uong"
+  keyword_input: "#keyword"
+  submit_button_text: "Tìm kiếm"
+  result_item_title: '[class*="documentTitle"]'
+  next_page: "TODO"                     # chưa khảo sát phân trang
+
+date_format: "%d/%m/%Y"
+required_fields: [so_hieu, ten_van_ban, ngay_ban_hanh, fulltext_container]

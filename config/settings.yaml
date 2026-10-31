@@ -1,0 +1,75 @@
+# Tham số hệ thống. Bí mật và địa chỉ dịch vụ lấy từ biến môi trường (.env), xem src/luatgt/common/config.py.
+timezone: Asia/Ho_Chi_Minh
+
+crawler:
+  headless: false                 # vbpl.vn chặn headless (docs/DECISIONS.md D-007)
+  min_delay_s: 3
+  max_delay_s: 6
+  page_timeout_s: 30
+  max_retries: 3
+  retry_backoff_s: [10, 30, 90]
+  max_relation_depth: 1
+  download_timeout_s: 120
+  min_file_bytes: 1024            # spec 7.5: size > 1 KB
+  text_layer_min_chars: 50        # spec 7.5: trang có ≥ 50 ký tự text
+  text_layer_min_ratio: 0.5       # has_text_layer = tỉ lệ trang có chữ ≥ ngưỡng này
+  respect_robots_txt: true
+  contact_header: null            # ví dụ "X-Contact: nhom01@vanlang.edu.vn" nếu cần
+  consent_decline_text: "Từ chối" # banner cookie: chọn từ chối cookie đo lường; null để bỏ qua
+  challenge_markers:              # chuỗi nhận diện trang chặn (quan sát 23/10/2026, docs/SOURCE_NOTES.md)
+    - "Sorry, you have been blocked"
+    - "You are unable to access"
+    - "<title>403 Forbidden</title>"
+
+storage:
+  buckets:
+    bronze: bronze
+    silver: silver
+    gold: gold
+
+paths:
+  seed_documents: config/seed_documents.yaml
+  vbpl_source: config/sources/vbpl.yaml
+  followup: config/followup.yaml
+  violation_attributes: config/violation_attributes.yaml
+  fixtures_dir: tests/fixtures/vbpl
+  events_dir: events
+  checkpoint_dir: checkpoints/qa_events
+  silver_staging: data/silver     # Spark ghi Parquet ở đây rồi upload lên bucket silver (D-014)
+  gold_staging: data/gold
+
+parsing:
+  parser_version: "2026-10-24.v1"   # tăng khi đổi logic parse (ghi vào Silver để truy vết)
+  ocr_enabled: true                 # chỉ chạy khi máy có `tesseract`
+  ocr_lang: vie
+  ocr_dpi: 300
+  pdf_min_chars_per_page: 50
+  header_footer_ratio: 0.5          # dòng lặp trên ≥ 50% số trang PDF là header/footer
+
+spark:
+  master: "local[*]"
+  app_name: luatgt
+  shuffle_partitions: 4
+  # JAVA_HOME lấy từ biến môi trường (.env). Spark 4 cần Java 17 hoặc 21.
+
+embedding:
+  model: BAAI/bge-m3
+  dim: 1024
+
+retrieval:
+  k: 20
+  branch_top_n: 50
+  rrf_k: 60
+  rerank: false
+
+llm:
+  provider: anthropic
+  model: null
+
+quality:
+  fine_min_vnd: 50000
+  fine_max_vnd: 150000000
+
+streaming:
+  watermark_delay: "10 minutes"
+  window: "10 minutes"

@@ -1,0 +1,44 @@
+name: luatgt
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16          # Postgres 16 + pgvector; unaccent có sẵn trong contrib
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-luatgt}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-luatgt}
+      POSTGRES_DB: ${POSTGRES_DB:-luatgt}
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    # MinIO không còn phát hành image community trên Docker Hub/quay (xem docs/DECISIONS.md D-001).
+    image: bitnamilegacy/minio:2025.7.23
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-luatgt}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-luatgt-dev-secret}
+      MINIO_DEFAULT_BUCKETS: bronze,silver,gold
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - miniodata:/bitnami/minio/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # airflow: bổ sung ở M10
+  # kafka:   tuỳ chọn ở M9 (mặc định streaming đọc thư mục JSON)
+
+volumes:
+  pgdata:
+  miniodata:

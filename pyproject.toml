@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "luatgt"
+version = "0.1.0"
+description = "Thu thập văn bản luật giao thông (vbpl.vn) và hỏi đáp có trích dẫn"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.7",
+  "pyyaml>=6.0",
+  "python-dotenv>=1.0",
+  "sqlalchemy>=2.0",
+  "psycopg[binary]>=3.1",
+  "minio>=7.2",
+  "typer>=0.12",
+]
+
+[project.optional-dependencies]
+# Cài theo milestone để M0 nhẹ; `pip install -e ".[all]"` khi cần đủ.
+crawler = ["playwright>=1.45", "beautifulsoup4>=4.12", "lxml>=5.2"]
+parsing = ["pymupdf>=1.24", "pytesseract>=0.3"]
+spark = ["pyspark>=4.0"]
+ml = ["sentence-transformers>=3.0", "pgvector>=0.3"]
+api = ["fastapi>=0.111", "uvicorn[standard]>=0.30"]
+dev = ["pytest>=8.2", "pytest-asyncio>=0.23", "ruff>=0.5"]
+all = ["luatgt[crawler,parsing,spark,ml,api,dev]"]
+
+[project.scripts]
+luatgt = "luatgt.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "integration: cần Postgres/MinIO đang chạy (docker compose up)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint.per-file-ignores]
+"src/luatgt/cli.py" = ["B008"]  # typer.Option trong tham số mặc định là cách dùng chuẩn của typer

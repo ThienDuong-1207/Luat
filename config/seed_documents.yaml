@@ -1,0 +1,48 @@
+# Seed list giai đoạn 1 (spec mục 1.3).
+# Nhóm phải tự tra vbpl_id trên vbpl.vn và xác nhận tình trạng hiệu lực trước khi chạy (M1).
+documents:
+  - so_hieu: "26/2001/QH10"
+    ten: "Luật Giao thông đường bộ"
+    vai_tro: thu_crawler          # đã hết hiệu lực, chỉ để thử crawler
+    vbpl_id: "23289"
+    url: "https://vbpl.vn/van-ban/chi-tiet/luat-giao-thong-duong-bo-so-26-2001-qh10--23289?tabs=toan-van"
+  - so_hieu: "36/2024/QH15"
+    ten: "Luật Trật tự, an toàn giao thông đường bộ"
+    vai_tro: luat_chinh
+    vbpl_id: "170620"   # xác nhận 31/10/2026: còn hiệu lực, HL 01/01/2025
+    url: "https://vbpl.vn/van-ban/chi-tiet/luat-trat-tu-an-toan-giao-thong-duong-bo-so-36-2024-qh15--170620?tabs=toan-van"
+  - so_hieu: "118/2025/QH15"
+    ten: "Luật sửa đổi Luật 36/2024/QH15"
+    vai_tro: van_ban_sua_doi
+    vbpl_id: "185923"   # xác nhận 31/10/2026: luật sửa 10 luật, trong đó có Luật 36/2024; HL 01/07/2026
+    url: "https://vbpl.vn/van-ban/chi-tiet/luat-sua-doi-bo-sung-mot-so-dieu-cua-10-luat-co-lien-quan-den-an-ninh-trat-tu-so-luat-so-118-2025-qh15--185923?tabs=toan-van"
+  - so_hieu: "35/2024/QH15"
+    ten: "Luật Đường bộ"
+    vai_tro: luat_chinh
+    vbpl_id: "172475"   # xác nhận 31/10/2026: còn hiệu lực, HL 01/01/2025
+    url: "https://vbpl.vn/van-ban/chi-tiet/luat-duong-bo-so-35-2024-qh15--172475?tabs=toan-van"
+  - so_hieu: "168/2024/NĐ-CP"
+    ten: "Nghị định xử phạt VPHC giao thông đường bộ, trừ điểm GPLX"
+    vai_tro: nghi_dinh_xu_phat
+    vbpl_id: "173920"             # xác nhận 23/10/2026: hết hiệu lực một phần, HL 01/01/2025
+    url: "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-168-2024-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--173920?tabs=toan-van"
+  - so_hieu: "238/2026/NĐ-CP"
+    ten: "Nghị định sửa đổi NĐ 168/2024/NĐ-CP"
+    vai_tro: van_ban_sua_doi
+    vbpl_id: "f4b0c320-79e6-11f1-8c8a-3587e086d762"   # ID dạng UUID (D-008); còn hiệu lực, HL 15/08/2026
+    url: "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-238-2026-nd-cp-sua-doi-bo-sung-mot-so-dieu-cua-nghi-dinh-so-168-2024-nd-cp-ngay-26-thang-12-nam-2024-cua-chinh-phu-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--f4b0c320-79e6-11f1-8c8a-3587e086d762?tabs=toan-van"
+  - so_hieu: "151/2024/NĐ-CP"
+    ten: "Nghị định hướng dẫn Luật 36/2024/QH15"
+    vai_tro: huong_dan
+    vbpl_id: "174961"   # xác nhận 31/10/2026: hết hiệu lực một phần, HL 01/01/2025
+    url: "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-151-2024-nd-cp--174961?tabs=toan-van"
+  - so_hieu: "184/2025/NĐ-CP"
+    ten: "Nghị định hướng dẫn (sửa đổi)"
+    vai_tro: huong_dan
+    vbpl_id: "0f5e2bd0-d42e-11f1-b226-3fc90cc27485"   # xác nhận 31/10/2026: UUID (D-008); HL 01/07/2025, hết hiệu lực 01/03/2027
+    url: "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-184-2025-nd-cp--0f5e2bd0-d42e-11f1-b226-3fc90cc27485?tabs=toan-van"
+  - so_hieu: "236/2026/NĐ-CP"
+    ten: "Nghị định sửa đổi NĐ 151/2024/NĐ-CP"   # ngoài spec 1.3, thêm theo D-016
+    vai_tro: van_ban_sua_doi
+    vbpl_id: "224b21d0-7d9e-11f1-bb7a-69f7cf2f90db"   # xác nhận 31/10/2026: UUID (D-008); còn hiệu lực, HL 01/07/2026
+    url: "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-236-2026-nd-cp--224b21d0-7d9e-11f1-bb7a-69f7cf2f90db?tabs=toan-van"

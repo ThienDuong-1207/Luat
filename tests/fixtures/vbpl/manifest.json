@@ -1,0 +1,282 @@
+[
+  {
+    "file": "23289__toan-van.html",
+    "vbpl_id": 23289,
+    "tab": "toan-van",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/luat-giao-thong-duong-bo-so-26-2001-qh10--23289?tabs=toan-van",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/luat-giao-thong-duong-bo-so-26-2001-qh10--23289?tabs=toan-van",
+    "status": 200,
+    "fetched_at": "2026-10-23T00:53:33.344808+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "23289__thuoc-tinh.html",
+    "vbpl_id": 23289,
+    "tab": "thuoc-tinh",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/luat-giao-thong-duong-bo-so-26-2001-qh10--23289?tabs=thuoc-tinh",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/luat-giao-thong-duong-bo-so-26-2001-qh10--23289?tabs=thuoc-tinh",
+    "status": 200,
+    "fetched_at": "2026-10-23T00:53:55.132923+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "23289__luoc-do.html",
+    "vbpl_id": 23289,
+    "tab": "luoc-do",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/luat-giao-thong-duong-bo-so-26-2001-qh10--23289?tabs=luoc-do",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/luat-giao-thong-duong-bo-so-26-2001-qh10--23289?tabs=luoc-do",
+    "status": 200,
+    "fetched_at": "2026-10-23T00:54:25.739916+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "23289__lich-su.html",
+    "vbpl_id": 23289,
+    "tab": "lich-su",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/luat-giao-thong-duong-bo-so-26-2001-qh10--23289?tabs=lich-su",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/luat-giao-thong-duong-bo-so-26-2001-qh10--23289?tabs=lich-su",
+    "status": 200,
+    "fetched_at": "2026-10-23T00:54:36.368386+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "23289__hien-thi-pdf.html",
+    "vbpl_id": 23289,
+    "tab": "hien-thi-pdf",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/luat-giao-thong-duong-bo-so-26-2001-qh10--23289?tabs=hien-thi-pdf",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/luat-giao-thong-duong-bo-so-26-2001-qh10--23289?tabs=hien-thi-pdf",
+    "status": 200,
+    "fetched_at": "2026-10-23T00:54:46.809425+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "23289__lenh-cong-bo.html",
+    "vbpl_id": 23289,
+    "tab": "lenh-cong-bo",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/luat-giao-thong-duong-bo-so-26-2001-qh10--23289?tabs=lenh-cong-bo",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/luat-giao-thong-duong-bo-so-26-2001-qh10--23289?tabs=lenh-cong-bo",
+    "status": 200,
+    "fetched_at": "2026-10-23T00:54:52.860609+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "23289__tai-ve.html",
+    "vbpl_id": 23289,
+    "tab": "tai-ve",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/luat-giao-thong-duong-bo-so-26-2001-qh10--23289?tabs=tai-ve",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/luat-giao-thong-duong-bo-so-26-2001-qh10--23289?tabs=tai-ve",
+    "status": 200,
+    "fetched_at": "2026-10-23T00:55:07.685871+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "173920__toan-van.html",
+    "vbpl_id": "173920",
+    "tab": "toan-van",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-168-2024-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--173920?tabs=toan-van",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-168-2024-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--173920?tabs=toan-van",
+    "status": 200,
+    "fetched_at": "2026-10-23T01:00:36.898820+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "173920__thuoc-tinh.html",
+    "vbpl_id": "173920",
+    "tab": "thuoc-tinh",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-168-2024-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--173920?tabs=thuoc-tinh",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-168-2024-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--173920?tabs=thuoc-tinh",
+    "status": 200,
+    "fetched_at": "2026-10-23T01:00:53.885194+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "173920__luoc-do.html",
+    "vbpl_id": "173920",
+    "tab": "luoc-do",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-168-2024-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--173920?tabs=luoc-do",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-168-2024-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--173920?tabs=luoc-do",
+    "status": 200,
+    "fetched_at": "2026-10-23T01:01:03.944480+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "173920__lich-su.html",
+    "vbpl_id": "173920",
+    "tab": "lich-su",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-168-2024-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--173920?tabs=lich-su",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-168-2024-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--173920?tabs=lich-su",
+    "status": 200,
+    "fetched_at": "2026-10-23T01:01:25.248724+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "173920__hien-thi-pdf.html",
+    "vbpl_id": "173920",
+    "tab": "hien-thi-pdf",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-168-2024-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--173920?tabs=hien-thi-pdf",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-168-2024-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--173920?tabs=hien-thi-pdf",
+    "status": 200,
+    "fetched_at": "2026-10-23T01:01:35.393405+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "173920__lenh-cong-bo.html",
+    "vbpl_id": "173920",
+    "tab": "lenh-cong-bo",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-168-2024-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--173920?tabs=lenh-cong-bo",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-168-2024-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--173920?tabs=toan-van",
+    "status": 200,
+    "fetched_at": "2026-10-23T01:02:06.274788+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "173920__tai-ve.html",
+    "vbpl_id": "173920",
+    "tab": "tai-ve",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-168-2024-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--173920?tabs=tai-ve",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-168-2024-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--173920?tabs=tai-ve",
+    "status": 200,
+    "fetched_at": "2026-10-23T01:02:22.994471+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "f4b0c320-79e6-11f1-8c8a-3587e086d762__toan-van.html",
+    "vbpl_id": "f4b0c320-79e6-11f1-8c8a-3587e086d762",
+    "tab": "toan-van",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-238-2026-nd-cp-sua-doi-bo-sung-mot-so-dieu-cua-nghi-dinh-so-168-2024-nd-cp-ngay-26-thang-12-nam-2024-cua-chinh-phu-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--f4b0c320-79e6-11f1-8c8a-3587e086d762?tabs=toan-van",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-238-2026-nd-cp-sua-doi-bo-sung-mot-so-dieu-cua-nghi-dinh-so-168-2024-nd-cp-ngay-26-thang-12-nam-2024-cua-chinh-phu-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--f4b0c320-79e6-11f1-8c8a-3587e086d762?tabs=toan-van",
+    "status": 200,
+    "fetched_at": "2026-10-23T01:02:24.950781+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "f4b0c320-79e6-11f1-8c8a-3587e086d762__thuoc-tinh.html",
+    "vbpl_id": "f4b0c320-79e6-11f1-8c8a-3587e086d762",
+    "tab": "thuoc-tinh",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-238-2026-nd-cp-sua-doi-bo-sung-mot-so-dieu-cua-nghi-dinh-so-168-2024-nd-cp-ngay-26-thang-12-nam-2024-cua-chinh-phu-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--f4b0c320-79e6-11f1-8c8a-3587e086d762?tabs=thuoc-tinh",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-238-2026-nd-cp-sua-doi-bo-sung-mot-so-dieu-cua-nghi-dinh-so-168-2024-nd-cp-ngay-26-thang-12-nam-2024-cua-chinh-phu-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--f4b0c320-79e6-11f1-8c8a-3587e086d762?tabs=thuoc-tinh",
+    "status": 200,
+    "fetched_at": "2026-10-23T01:02:39.815527+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "f4b0c320-79e6-11f1-8c8a-3587e086d762__luoc-do.html",
+    "vbpl_id": "f4b0c320-79e6-11f1-8c8a-3587e086d762",
+    "tab": "luoc-do",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-238-2026-nd-cp-sua-doi-bo-sung-mot-so-dieu-cua-nghi-dinh-so-168-2024-nd-cp-ngay-26-thang-12-nam-2024-cua-chinh-phu-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--f4b0c320-79e6-11f1-8c8a-3587e086d762?tabs=luoc-do",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-238-2026-nd-cp-sua-doi-bo-sung-mot-so-dieu-cua-nghi-dinh-so-168-2024-nd-cp-ngay-26-thang-12-nam-2024-cua-chinh-phu-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--f4b0c320-79e6-11f1-8c8a-3587e086d762?tabs=luoc-do",
+    "status": 200,
+    "fetched_at": "2026-10-23T01:03:10.462775+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "f4b0c320-79e6-11f1-8c8a-3587e086d762__lich-su.html",
+    "vbpl_id": "f4b0c320-79e6-11f1-8c8a-3587e086d762",
+    "tab": "lich-su",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-238-2026-nd-cp-sua-doi-bo-sung-mot-so-dieu-cua-nghi-dinh-so-168-2024-nd-cp-ngay-26-thang-12-nam-2024-cua-chinh-phu-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--f4b0c320-79e6-11f1-8c8a-3587e086d762?tabs=lich-su",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-238-2026-nd-cp-sua-doi-bo-sung-mot-so-dieu-cua-nghi-dinh-so-168-2024-nd-cp-ngay-26-thang-12-nam-2024-cua-chinh-phu-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--f4b0c320-79e6-11f1-8c8a-3587e086d762?tabs=lich-su",
+    "status": 200,
+    "fetched_at": "2026-10-23T01:03:20.084596+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "f4b0c320-79e6-11f1-8c8a-3587e086d762__hien-thi-pdf.html",
+    "vbpl_id": "f4b0c320-79e6-11f1-8c8a-3587e086d762",
+    "tab": "hien-thi-pdf",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-238-2026-nd-cp-sua-doi-bo-sung-mot-so-dieu-cua-nghi-dinh-so-168-2024-nd-cp-ngay-26-thang-12-nam-2024-cua-chinh-phu-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--f4b0c320-79e6-11f1-8c8a-3587e086d762?tabs=hien-thi-pdf",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-238-2026-nd-cp-sua-doi-bo-sung-mot-so-dieu-cua-nghi-dinh-so-168-2024-nd-cp-ngay-26-thang-12-nam-2024-cua-chinh-phu-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--f4b0c320-79e6-11f1-8c8a-3587e086d762?tabs=hien-thi-pdf",
+    "status": 200,
+    "fetched_at": "2026-10-23T01:03:33.588185+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "f4b0c320-79e6-11f1-8c8a-3587e086d762__lenh-cong-bo.html",
+    "vbpl_id": "f4b0c320-79e6-11f1-8c8a-3587e086d762",
+    "tab": "lenh-cong-bo",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-238-2026-nd-cp-sua-doi-bo-sung-mot-so-dieu-cua-nghi-dinh-so-168-2024-nd-cp-ngay-26-thang-12-nam-2024-cua-chinh-phu-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--f4b0c320-79e6-11f1-8c8a-3587e086d762?tabs=lenh-cong-bo",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-238-2026-nd-cp-sua-doi-bo-sung-mot-so-dieu-cua-nghi-dinh-so-168-2024-nd-cp-ngay-26-thang-12-nam-2024-cua-chinh-phu-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--f4b0c320-79e6-11f1-8c8a-3587e086d762?tabs=toan-van",
+    "status": 200,
+    "fetched_at": "2026-10-23T01:03:51.246884+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "f4b0c320-79e6-11f1-8c8a-3587e086d762__tai-ve.html",
+    "vbpl_id": "f4b0c320-79e6-11f1-8c8a-3587e086d762",
+    "tab": "tai-ve",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-238-2026-nd-cp-sua-doi-bo-sung-mot-so-dieu-cua-nghi-dinh-so-168-2024-nd-cp-ngay-26-thang-12-nam-2024-cua-chinh-phu-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--f4b0c320-79e6-11f1-8c8a-3587e086d762?tabs=tai-ve",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-238-2026-nd-cp-sua-doi-bo-sung-mot-so-dieu-cua-nghi-dinh-so-168-2024-nd-cp-ngay-26-thang-12-nam-2024-cua-chinh-phu-quy-dinh-xu-phat-vi-pham-hanh-chinh-ve-trat-tu-an-toan-giao-thong-trong-linh-vuc-giao-thong-duong-bo-tru-diem-phuc-hoi-diem-giay-phep-lai-xe--f4b0c320-79e6-11f1-8c8a-3587e086d762?tabs=tai-ve",
+    "status": 200,
+    "fetched_at": "2026-10-23T01:04:01.212440+00:00",
+    "selector_version": "2026-10-23.v0"
+  },
+  {
+    "file": "185666__toan-van.html",
+    "vbpl_id": "185666",
+    "tab": "toan-van",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-336-2025-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-trong-hoat-dong-duong-bo--185666?tabs=toan-van",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-336-2025-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-trong-hoat-dong-duong-bo--185666?tabs=toan-van",
+    "status": 200,
+    "fetched_at": "2026-10-24T00:14:34.237789+00:00",
+    "selector_version": "2026-10-23.v1"
+  },
+  {
+    "file": "185666__thuoc-tinh.html",
+    "vbpl_id": "185666",
+    "tab": "thuoc-tinh",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-336-2025-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-trong-hoat-dong-duong-bo--185666?tabs=thuoc-tinh",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-336-2025-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-trong-hoat-dong-duong-bo--185666?tabs=thuoc-tinh",
+    "status": 200,
+    "fetched_at": "2026-10-24T00:14:59.084806+00:00",
+    "selector_version": "2026-10-23.v1"
+  },
+  {
+    "file": "185666__luoc-do.html",
+    "vbpl_id": "185666",
+    "tab": "luoc-do",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-336-2025-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-trong-hoat-dong-duong-bo--185666?tabs=luoc-do",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-336-2025-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-trong-hoat-dong-duong-bo--185666?tabs=luoc-do",
+    "status": 200,
+    "fetched_at": "2026-10-24T00:15:08.785724+00:00",
+    "selector_version": "2026-10-23.v1"
+  },
+  {
+    "file": "185666__lich-su.html",
+    "vbpl_id": "185666",
+    "tab": "lich-su",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-336-2025-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-trong-hoat-dong-duong-bo--185666?tabs=lich-su",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-336-2025-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-trong-hoat-dong-duong-bo--185666?tabs=lich-su",
+    "status": 200,
+    "fetched_at": "2026-10-24T00:15:39.114052+00:00",
+    "selector_version": "2026-10-23.v1"
+  },
+  {
+    "file": "185666__hien-thi-pdf.html",
+    "vbpl_id": "185666",
+    "tab": "hien-thi-pdf",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-336-2025-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-trong-hoat-dong-duong-bo--185666?tabs=hien-thi-pdf",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-336-2025-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-trong-hoat-dong-duong-bo--185666?tabs=hien-thi-pdf",
+    "status": 200,
+    "fetched_at": "2026-10-24T00:15:43.453161+00:00",
+    "selector_version": "2026-10-23.v1"
+  },
+  {
+    "file": "185666__lenh-cong-bo.html",
+    "vbpl_id": "185666",
+    "tab": "lenh-cong-bo",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-336-2025-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-trong-hoat-dong-duong-bo--185666?tabs=lenh-cong-bo",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-336-2025-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-trong-hoat-dong-duong-bo--185666?tabs=toan-van",
+    "status": 200,
+    "fetched_at": "2026-10-24T00:15:56.573461+00:00",
+    "selector_version": "2026-10-23.v1"
+  },
+  {
+    "file": "185666__tai-ve.html",
+    "vbpl_id": "185666",
+    "tab": "tai-ve",
+    "url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-336-2025-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-trong-hoat-dong-duong-bo--185666?tabs=tai-ve",
+    "final_url": "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-336-2025-nd-cp-quy-dinh-xu-phat-vi-pham-hanh-chinh-trong-hoat-dong-duong-bo--185666?tabs=tai-ve",
+    "status": 200,
+    "fetched_at": "2026-10-24T00:16:26.956384+00:00",
+    "selector_version": "2026-10-23.v1"
+  }
+]

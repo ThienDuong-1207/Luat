@@ -1,0 +1,12 @@
+max_rounds: 3
+max_questions_per_round: 2
+gain_threshold: 0.15
+dimensions:
+  phuong_tien:
+    question: "Bạn điều khiển loại phương tiện nào?"
+    labels: {xe_may: "Xe máy", o_to: "Ô tô", xe_4_banh_dong_co: "Xe bốn bánh có gắn động cơ", may_keo: "Máy kéo", xe_may_chuyen_dung: "Xe máy chuyên dùng", xe_dap: "Xe đạp", xe_tho_so: "Xe thô sơ", nguoi_di_bo: "Người đi bộ", hanh_khach: "Hành khách", co_gioi: "Xe cơ giới nói chung"}
+  nong_do_con:
+    question: "Nồng độ cồn đo được ở mức nào?"
+    labels: {duoi_50mg: "Chưa vượt 50 mg/100 ml máu", "50_80mg": "Từ trên 50 đến 80 mg", tren_80mg: "Trên 80 mg", khong_chap_hanh: "Không chấp hành kiểm tra nồng độ cồn"}
+  thoi_diem:
+    question: "Vi phạm xảy ra khi nào?"

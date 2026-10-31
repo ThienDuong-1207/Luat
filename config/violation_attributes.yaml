@@ -1,0 +1,47 @@
+# Từ điển trích xuất violations (spec mục 8.5). Regex áp trên hành vi đã bỏ vế "trừ …".
+sources:
+  - so_hieu: "168/2024/NĐ-CP"
+    dieu_from: 6      # chương xử phạt
+    dieu_to: 40
+
+# Thứ tự không quan trọng; một câu có thể ra nhiều loại phương tiện.
+phuong_tien:
+  o_to: '\bô tô|xe đầu kéo|sơ mi rơ moóc|rơ moóc'   # \b: "mô tô" chứa chuỗi "ô tô"
+  xe_may: 'xe mô tô|xe gắn máy|mô tô|xe tương tự xe gắn máy'
+  xe_4_banh_dong_co: 'xe chở (?:người|hàng) bốn bánh có gắn động cơ'
+  may_keo: 'máy kéo'
+  xe_may_chuyen_dung: 'xe máy chuyên dùng'
+  xe_dap: 'xe đạp'
+  xe_tho_so: 'xe thô sơ|xe vật nuôi kéo'
+  nguoi_di_bo: 'người đi bộ'
+  co_gioi: 'phương tiện giao thông cơ giới'
+
+# Điều không nêu loại xe trong tiêu đề, câu dẫn hay hành vi.
+dieu_defaults:
+  "11": [xe_tho_so]
+  "12": [khong_ap_dung]
+  "26": [khong_ap_dung]
+  "32": [co_gioi]
+  "31": [khong_ap_dung]
+  "33": [hanh_khach]
+  "35": [co_gioi]
+  "38": [co_gioi]
+  "39": [khong_ap_dung]
+  "40": [khong_ap_dung]
+
+attributes:
+  nong_do_con:
+    duoi_50mg: 'chưa vượt quá 50 miligam'
+    "50_80mg": 'vượt quá 50 miligam đến 80 miligam'
+    tren_80mg: 'vượt quá 80 miligam'
+    khong_chap_hanh: 'Không chấp hành yêu cầu kiểm tra về nồng độ cồn'
+  vuot_toc_do:
+    "05_10kmh": 'từ 05 km/h đến dưới 10 km/h'
+    "10_20kmh": 'từ 10 km/h đến 20 km/h'
+    "20_35kmh": 'trên 20 km/h đến 35 km/h'
+    tren_20kmh: 'trên 20 km/h(?! đến)'
+    tren_35kmh: 'trên 35 km/h'
+  gay_tai_nan:
+    co: 'gây tai nạn giao thông'
+  tai_pham:
+    co: '[Tt]ái phạm'
