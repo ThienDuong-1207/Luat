@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date
 
 import pytest
@@ -265,11 +266,15 @@ def test_api_writes_events_and_feedback(client):
     sid = client.post("/api/ask", json={"question": "uống rượu lái xe", "as_of_date": "2026-10-20"}).json()["session_id"]
     assert client.post("/api/feedback", json={"session_id": sid, "thumbs": "down"}).json() == {"ok": True}
     assert client.post("/api/feedback", json={"session_id": sid, "thumbs": "x"}).status_code == 422
-    lines = next(client.settings.paths.events_dir.glob("*.jsonl")).read_text("utf-8").splitlines()
+    files = sorted(client.settings.paths.events_dir.glob("*.jsonl"))
+    assert len(files) == 2   # mỗi event một file, Spark không đọc lại file đã nối thêm
+    lines = sorted((f.read_text("utf-8").strip() for f in files), key=lambda x: json.loads(x)["ingest_time"])
     assert len(lines) == 2 and '"thumbs": "down"' in lines[1] and '"ingest_time"' in lines[1]
 
 
 @pytest.mark.integration
 def test_api_health_and_stats(client):
     assert client.get("/api/health").json()["postgres"] == "ok"
+    summary = client.get("/api/stats/summary").json()
+    assert summary["n_questions"] == 0 and summary["last_run"] is None
     assert client.get("/api/stats/topics", params={"from": "2026-01-01T00:00:00", "to": "2026-02-01T00:00:00"}).json() == []

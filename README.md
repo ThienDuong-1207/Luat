@@ -81,5 +81,5 @@ MinIO console: http://localhost:9001 (tài khoản lấy từ `MINIO_ACCESS_KEY`
 - [x] M6. Index + retrieval (`luatgt build-index`, `luatgt search`, `eval/run_eval.py`)
 - [x] M7. Follow-up engine + answer + API (`uvicorn --factory luatgt.api.main:app_factory`)
 - [x] M8. Frontend (`npm --prefix web run dev`, cần API đang chạy; `API_URL` mặc định `http://localhost:8000`)
-- [ ] M9. Streaming + dashboard
+- [x] M9. Streaming + dashboard (`luatgt stream`, `luatgt stream --once`, `eval/run_watermark_experiment.py`, kết quả: [docs/M9_WATERMARK.md](docs/M9_WATERMARK.md))
 - [ ] M10. Airflow + đánh giá

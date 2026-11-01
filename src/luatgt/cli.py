@@ -117,6 +117,14 @@ def build_gold_cmd() -> None:
     )
 
 
+@app.command("stream")
+def stream(once: bool = typer.Option(False, "--once", help="Xử lý hết event hiện có rồi dừng")) -> None:
+    """Đếm event theo cửa sổ và upsert vào `qa_topic_counts`."""
+    from luatgt.streaming.qa_events_stream import run_stream
+
+    typer.echo(run_stream(once=once))
+
+
 @app.command("build-index")
 def build_index_cmd() -> None:
     """Gold → chunks + embedding. Chỉ embed lại chunk có nội dung đổi."""

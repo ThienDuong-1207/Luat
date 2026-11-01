@@ -191,6 +191,17 @@ Ghi theo quy tắc mục 0.8 của `LuatGT_System_Design.md`. Mỗi mục: vấn
 - **Lệch spec 15.3.5:** so sánh phiên bản xếp dọc, không hai cột, vì panel chỉ rộng 440px. Dùng icon Lucide thay emoji 👍/👎.
 - **Thiếu:** số trang PDF: `pdf_page` đang rỗng ở toàn bộ 4.651 điều khoản nên panel không hiện. Trang `/dashboard` và link của nó để M9. Hỏi ngữ cảnh chưa có: câu hỏi mới luôn tạo phiên mới.
 
+## D-023. Streaming và dashboard (M9, 01/11/2026)
+- **Lệch spec 12:** API không ghi nối vào file theo ngày nữa mà ghi mỗi event một file, đổi tên nguyên tử từ `events/.tmp/`. File source của Spark đọc mỗi file đúng một lần, nên dòng nối vào file đã đọc sẽ mất hẳn. Giá phải trả là nhiều file nhỏ; lưu lượng lớn thì chuyển Kafka.
+- **Thêm ngoài spec:** bỏ event có `event_time` vượt `ingest_time` quá `streaming.max_client_ahead` (5 phút). Thiếu bước này, một client đặt sai đồng hồ đẩy watermark đi xa và làm mất mọi event thật sau đó. Event này không được đếm ở đâu cả.
+- **`client_sent_at` không có múi giờ** được coi là giờ `timezone` trong settings.
+- **Cách Spark loại event trễ:** so với watermark của batch trước, không phải batch hiện tại. Một event quá hạn có thể vẫn được đếm nếu vừa đến ngay batch watermark nhảy lên.
+- **Chạy:** `luatgt stream` chạy liên tục, `luatgt stream --once` xử lý hết rồi dừng. `numRowsDroppedByWatermark` chỉ ghi log.
+- **Thí nghiệm:** `eval/run_watermark_experiment.py`, kết quả ở [M9_WATERMARK.md](M9_WATERMARK.md). Có thêm mức đối chứng 60 phút để chứng minh phần thiếu chỉ do watermark. Dữ liệu là giả lập, tỉ lệ trễ 8% là tự chọn nên con số chỉ dùng để so sánh hai mức.
+- **Đề xuất watermark:** giữ 10 phút như spec cho đến khi có phân bố trễ thật; chưa đo mức 10 phút trong thí nghiệm.
+- **Dashboard:** thêm `GET /api/stats/summary`. "Tỉ lệ không hài lòng" là 👎 / số câu hỏi, không phải / số phản hồi, vì `qa_topic_counts` không đếm 👍. Bảng màu spec không đạt kiểm tra độ sáng của validator (vàng, xanh lá) và có cặp cam–xanh lá khó phân biệt với người mù màu đỏ–lục: bỏ cam, thêm viền đen, chú giải chữ và bảng số liệu. Biểu đồ 24 giờ gộp 30 phút, 7 ngày gộp 6 giờ.
+- **Quarantine theo run:** 30/31 bản ghi không có `run_id` vì sinh ở bước parse/build, nên bảng theo run gần như toàn 0 và dashboard ghi số không gắn run riêng.
+
 ## Câu hỏi mở (cần nhóm quyết định trước milestone liên quan)
 - **Q-1 (M9):** trường `topic` của event: đã áp dụng tạm theo D-021, chờ nhóm xác nhận.
 - **Q-2 (M10):** `dag_build` chạy "sau `dag_crawl_daily`" bằng cơ chế nào? Đề xuất: Airflow Dataset (data-aware scheduling).

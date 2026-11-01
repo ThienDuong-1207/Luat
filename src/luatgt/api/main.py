@@ -48,16 +48,23 @@ class App:
                          self.llm)
 
     def event(self, kind: str, session_id: str | None, topic: str, thumbs: str | None, sent: datetime | None) -> None:
-        """Ghi event at-least-once cho streaming (spec 13.1). `event_time` lấy từ client nếu có."""
+        """Ghi event at-least-once cho streaming (spec 13.1). `event_time` lấy từ client nếu có.
+
+        Mỗi event một file, đổi tên nguyên tử vào `events/`: file source của Spark đọc mỗi file đúng một lần
+        nên không được nối thêm vào file cũ (D-023). Spark bỏ qua thư mục bắt đầu bằng dấu chấm.
+        """
         tz = ZoneInfo(self.settings.timezone)
         now = datetime.now(tz)
-        row = {"event_id": str(uuid.uuid4()), "event_time": (sent or now).isoformat(), "type": kind,
+        event_time = (sent.replace(tzinfo=tz) if sent and sent.tzinfo is None else sent) or now
+        row = {"event_id": str(uuid.uuid4()), "event_time": event_time.isoformat(), "type": kind,
                "session_id": session_id, "topic": topic, "thumbs": thumbs,
                "client_sent_at": sent.isoformat() if sent else None, "ingest_time": now.isoformat()}
         folder = self.settings.path(self.settings.paths.events_dir)
-        folder.mkdir(parents=True, exist_ok=True)
-        with (folder / f"events-{now:%Y%m%d}.jsonl").open("a", encoding="utf-8") as f:
-            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+        staging = folder / ".tmp"
+        staging.mkdir(parents=True, exist_ok=True)
+        name = f"evt-{now:%Y%m%dT%H%M%S}-{row['event_id']}.jsonl"
+        (staging / name).write_text(json.dumps(row, ensure_ascii=False) + "\n", encoding="utf-8")
+        (staging / name).replace(folder / name)
 
 
 def _topic(response: AskResponse) -> str:
@@ -66,7 +73,7 @@ def _topic(response: AskResponse) -> str:
         return response.follow_up_questions[0].dimension
     for f in response.facts:
         for key in f.attributes:
-            if key not in ("tinh_theo", "tong_muc_phat_toi_da"):
+            if key not in ("tinh_theo", "tong_muc_phat_toi_da", "che_tai_co_dieu_kien"):
                 return key
     return "unknown"
 
@@ -189,6 +196,25 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None,
                 WHERE window_start >= :f AND window_start < :t ORDER BY window_start, topic"""),
                 {"f": from_, "t": to}).mappings().all()
         return [dict(r) for r in rows]
+
+    @app.get("/api/stats/summary")
+    def stats_summary() -> dict:
+        with engine.connect() as conn:
+            totals = conn.execute(text("""
+                SELECT COALESCE(sum(n_questions), 0) AS n_questions, COALESCE(sum(n_thumbs_down), 0) AS n_thumbs_down,
+                       max(window_end) AS last_window_end
+                FROM qa_topic_counts""")).mappings().one()
+            quarantine = conn.execute(text("""
+                SELECT stage, count(*) AS n FROM quarantine WHERE NOT COALESCE(resolved, false)
+                GROUP BY stage ORDER BY n DESC""")).mappings().all()
+            by_run = conn.execute(text("""
+                SELECT r.run_id, r.started_at, r.status, count(q.id) AS n
+                FROM crawl_runs r LEFT JOIN quarantine q ON q.run_id = r.run_id
+                GROUP BY r.run_id ORDER BY r.started_at DESC LIMIT 10""")).mappings().all()
+            unassigned = conn.execute(text("SELECT count(*) FROM quarantine WHERE run_id IS NULL")).scalar_one()
+        return {**dict(totals), "quarantine_by_stage": [dict(r) for r in quarantine],
+                "quarantine_by_run": [dict(r) for r in by_run], "quarantine_without_run": unassigned,
+                "last_run": dict(by_run[0]) if by_run else None}
 
     @app.get("/api/health")
     def health() -> dict:

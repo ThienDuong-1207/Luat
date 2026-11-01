@@ -106,6 +106,8 @@ class QualitySettings(BaseModel):
 
 class StreamingSettings(BaseModel):
     watermark_delay: str = "10 minutes"
+    trigger_interval: str = "30 seconds"
+    max_client_ahead: str = "5 minutes"
     window: str = "10 minutes"
 
 

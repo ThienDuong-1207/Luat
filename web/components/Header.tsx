@@ -20,6 +20,9 @@ export function Header() {
         <Link href="/van-ban" className={NAV_LINK}>
           Văn bản
         </Link>
+        <Link href="/dashboard" className={NAV_LINK}>
+          Dashboard
+        </Link>
       </nav>
       {pathname === "/" ? (
         <label className="flex items-center gap-2">

@@ -92,3 +92,5 @@ quality:
 streaming:
   watermark_delay: "10 minutes"
   window: "10 minutes"
+  trigger_interval: "30 seconds"
+  max_client_ahead: "5 minutes"     # event_time vượt ingest_time quá mức này bị loại: đồng hồ client sai sẽ đẩy watermark
