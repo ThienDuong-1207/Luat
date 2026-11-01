@@ -51,6 +51,7 @@ def crawl(
         [], "--url", help="URL chi tiết cho --save-fixtures (mặc định: seed có url)"
     ),
     screenshots: bool = typer.Option(True, help="Chụp màn hình kèm fixtures"),
+    stage: str | None = typer.Option(None, help="Chỉ chạy một tầng: detail | download"),
 ) -> None:
     """Crawl vbpl.vn."""
     import asyncio
@@ -65,9 +66,12 @@ def crawl(
     source = load_source_config(settings.path(settings.paths.vbpl_source))
 
     if save_fixtures is None:
-        from luatgt.crawler.run import run_crawl
+        from luatgt.crawler.run import STAGES, run_crawl
 
-        run_id, status = asyncio.run(run_crawl(settings, mode=mode, limit=limit))
+        if stage is not None and stage not in STAGES:
+            raise typer.BadParameter(f"stage phải thuộc {list(STAGES)}")
+        stages = (stage,) if stage else tuple(STAGES)
+        run_id, status = asyncio.run(run_crawl(settings, mode=mode, limit=limit, stages=stages))
         typer.echo(f"Run {run_id}: {status}")
         raise typer.Exit({"success": 0, "partial": 1, "blocked": 3}.get(status, 2))
 
@@ -84,6 +88,15 @@ def crawl(
         typer.echo(f"BỊ CHẶN, dừng run: {e}")
         raise typer.Exit(3) from e
     typer.echo(f"Đã lưu {len(manifest)} fixture vào {save_fixtures}")
+
+
+@app.command("recheck")
+def recheck() -> None:
+    """Đánh dấu lại `pending` các văn bản còn hiệu lực để lần crawl sau kiểm tra lại."""
+    from luatgt.common.db import make_engine
+    from luatgt.crawler.state import CrawlState
+
+    typer.echo(f"Đã đánh dấu lại {CrawlState(make_engine(get_settings())).requeue_active()} văn bản")
 
 
 @app.command("reparse")

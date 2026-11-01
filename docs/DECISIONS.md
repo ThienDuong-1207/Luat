@@ -202,8 +202,17 @@ Ghi theo quy tắc mục 0.8 của `LuatGT_System_Design.md`. Mỗi mục: vấn
 - **Dashboard:** thêm `GET /api/stats/summary`. "Tỉ lệ không hài lòng" là 👎 / số câu hỏi, không phải / số phản hồi, vì `qa_topic_counts` không đếm 👍. Bảng màu spec không đạt kiểm tra độ sáng của validator (vàng, xanh lá) và có cặp cam–xanh lá khó phân biệt với người mù màu đỏ–lục: bỏ cam, thêm viền đen, chú giải chữ và bảng số liệu. Biểu đồ 24 giờ gộp 30 phút, 7 ngày gộp 6 giờ.
 - **Quarantine theo run:** 30/31 bản ghi không có `run_id` vì sinh ở bước parse/build, nên bảng theo run gần như toàn 0 và dashboard ghi số không gắn run riêng.
 
+## D-024. Airflow và báo cáo eval (M10, 01/11/2026)
+- **Lệch spec 3 và 4:** Airflow 2.11 chạy trên máy (`scripts/airflow.sh`, virtualenv `.venv-airflow`), không có trong `docker-compose.yml`. Crawler phải chạy headed trên máy có màn hình (D-007); Airflow trong Docker sẽ cần Xvfb, Chromium, Java và model bge-m3 trong cùng image. Virtualenv tách riêng vì constraints của Airflow xung đột với pipeline. Task gọi CLI bằng `BashOperator`.
+- **Q-2 đã chốt:** `dag_build` chạy theo Airflow Dataset `luatgt://bronze`, chỉ phát khi `crawl_download` thành công. Crawl bị chặn hoặc `partial` làm task fail nên không build dữ liệu dở. Task crawl không retry (spec 7.2).
+- **Lệch spec 14:** không có task `follow_relations` vì crawler giai đoạn 1 chỉ có mode `seed`. `quality_checks` không tách task riêng: kiểm tra nằm trong `build_gold`, lỗi error dừng trước khi publish, nên đúng yêu cầu Gold cũ vẫn phục vụ. Thêm task `bootstrap` (migrate, tạo bucket) và `dag_stream` mỗi 10 phút.
+- **macOS:** thư viện `setproctitle` làm mọi tiến trình fork của Airflow SIGSEGV (đã xác nhận qua crash report), nên `scripts/airflow.sh` nạp bản rỗng ở `scripts/airflow_shim/`.
+- **Executor:** `airflow standalone` dùng SQLite và chạy tuần tự, chỉ hợp với máy dev.
+- **Chạy từ đầu:** dùng DB `luatgt_e2e`, bucket `e2e-*`, thư mục `data/e2e/` qua biến môi trường, không xoá Bronze hay Gold thật.
+- **Nghiệm thu 01/11/2026:** kích hoạt `dag_crawl_daily` trên DB và bucket rỗng, `dag_build` tự chạy theo Dataset, `dag_eval` sinh báo cáo. DB e2e có đúng số dòng của DB thật (9 văn bản, 4.651 điều khoản, 449 sửa đổi, 5.032 phiên bản, 906 violations, 3.545 chunks, 31 quarantine) và trùng md5 trên `violations`, `provision_versions`. Kết quả này cho thấy pipeline tái lập được, không chứng minh dữ liệu đúng.
+- **Eval:** Q&A chạy luồng thật bằng template, câu hỏi phụ trả lời theo đáp án chuẩn. "Dòng đầu đúng mức phạt" là thước đo thô: câu trả lời nhiều dòng có thể chứa mức đúng ở dòng sau. Bộ câu hỏi mới có 66/100 câu, đáp án chưa được nhóm đối chiếu; không tự sinh thêm cho đủ vì đáp án cần người kiểm. Parse accuracy và Extraction accuracy cần kiểm tay nên báo cáo ghi là chưa đo.
+
 ## Câu hỏi mở (cần nhóm quyết định trước milestone liên quan)
 - **Q-1 (M9):** trường `topic` của event: đã áp dụng tạm theo D-021, chờ nhóm xác nhận.
-- **Q-2 (M10):** `dag_build` chạy "sau `dag_crawl_daily`" bằng cơ chế nào? Đề xuất: Airflow Dataset (data-aware scheduling).
 - **Q-4:** NĐ 336/2025/NĐ-CP sửa NĐ 168/2024/NĐ-CP theo metadata vbpl.vn nhưng không có trong seed, cùng NĐ 319/2026 và Luật 143/2025. Có thêm vào kho không?
 - **Q-3:** mục 0 của spec ghi "Milestone ở mục 14", thực tế là mục 17.

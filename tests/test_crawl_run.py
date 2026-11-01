@@ -6,9 +6,12 @@ bị chặn → run dừng với status=blocked.
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from sqlalchemy import text
 
+from luatgt.crawler.run import run_crawl
 from tests.helpers import CRAWL_TABLES as TABLES
 from tests.helpers import LUAT26, ND168, ND238, SEED_URLS, FakeBrowser, run
 
@@ -169,3 +172,25 @@ def test_bad_pdf_goes_to_quarantine(ctx):
         rules = conn.execute(text("SELECT rule FROM quarantine")).scalars().all()
     assert rules == ["not_pdf_magic"]
     assert counts(ctx)["bronze_pdf"] == 0
+
+
+
+def test_stage_option_runs_only_that_stage(ctx):
+    s, _, storage, state, source = ctx
+    _, status = asyncio.run(run_crawl(s, browser_factory=lambda: FakeBrowser(source), storage=storage, state=state,
+                                      source=source, stages=("detail",)))
+    assert status == "success" and counts(ctx)["bronze_pdf"] == 0
+    assert state.pending("download")
+    _, status = asyncio.run(run_crawl(s, browser_factory=lambda: FakeBrowser(source), storage=storage, state=state,
+                                      source=source, stages=("download",)))
+    assert status == "success" and counts(ctx)["bronze_pdf"] > 0
+
+
+def test_requeue_active_marks_only_documents_in_force(ctx):
+    _, engine, _, state, source = ctx
+    run(ctx, FakeBrowser(source))
+    assert not state.pending("detail")
+    with engine.connect() as conn:
+        active = conn.execute(text("SELECT count(*) FROM documents WHERE tinh_trang_norm = 'con_hieu_luc'")).scalar_one()
+    assert state.requeue_active() == active
+    assert len(state.pending("detail")) == active

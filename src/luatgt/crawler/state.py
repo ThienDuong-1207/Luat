@@ -84,6 +84,15 @@ class CrawlState:
                 {"id": vbpl_id, "stage": stage},
             )
 
+    def requeue_active(self) -> int:
+        """Đánh dấu lại `pending` để crawl lại văn bản còn hiệu lực (spec 14, `dag_recheck_weekly`)."""
+        with self.engine.begin() as conn:
+            return conn.execute(text("""
+                UPDATE crawl_queue q SET status = 'pending'
+                FROM documents d
+                WHERE q.vbpl_id = d.vbpl_id AND q.stage = 'detail' AND d.tinh_trang_norm = 'con_hieu_luc'
+                  AND q.status <> 'pending'""")).rowcount
+
     def pending(self, stage: str, limit: int | None = None) -> list[QueueItem]:
         """Dòng cần xử lý: pending, hoặc failed còn lượt retry (spec 7.6)."""
         sql = """SELECT vbpl_id, stage, url, status, retry_count, content_hash FROM crawl_queue

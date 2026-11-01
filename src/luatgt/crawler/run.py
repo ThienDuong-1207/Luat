@@ -33,8 +33,12 @@ async def run_crawl(
     storage: Storage | None = None,
     state: CrawlState | None = None,
     source: SourceConfig | None = None,
+    stages: tuple[str, ...] = tuple(STAGES),
 ) -> tuple[uuid.UUID, str]:
-    """Chạy một run. Trả (run_id, status) với status ∈ success | partial | blocked | failed."""
+    """Chạy một run. Trả (run_id, status) với status ∈ success | partial | blocked | failed.
+
+    `stages` cho phép Airflow chạy riêng detail và download.
+    """
     source = source or load_source_config(settings.path(settings.paths.vbpl_source))
     state = state or CrawlState(make_engine(settings))
     storage = storage or Storage(settings)
@@ -48,10 +52,11 @@ async def run_crawl(
             raise NotImplementedError(f"Mode {mode!r} chưa có ở giai đoạn 1 (spec 7.3)")
         ctx.counters.discovered = discover_seed(ctx)
 
-        work = {stage: state.pending(stage, limit) for stage in STAGES}
+        work = {stage: state.pending(stage, limit) for stage in stages}
         if any(work.values()):
             async with browser_factory() as browser:
-                for stage, fn in STAGES.items():
+                for stage in stages:
+                    fn = STAGES[stage]
                     # Lấy lại danh sách: detail có thể vừa thêm/requeue dòng download
                     for item in state.pending(stage, limit):
                         try:

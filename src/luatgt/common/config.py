@@ -147,6 +147,12 @@ ENV_OVERRIDES: list[tuple[str, tuple[str, ...]]] = [
     ("CRAWL_MAX_DELAY_S", ("crawler", "max_delay_s")),
     ("TZ", ("timezone",)),
     ("LOG_LEVEL", ("log_level",)),
+    # Môi trường tách biệt, ví dụ lần chạy thử pipeline từ đầu (D-024)
+    ("BRONZE_BUCKET", ("storage", "buckets", "bronze")),
+    ("SILVER_BUCKET", ("storage", "buckets", "silver")),
+    ("GOLD_BUCKET", ("storage", "buckets", "gold")),
+    ("SILVER_STAGING", ("paths", "silver_staging")),
+    ("GOLD_STAGING", ("paths", "gold_staging")),
 ]
 
 

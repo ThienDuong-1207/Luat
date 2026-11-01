@@ -69,6 +69,12 @@ Giao diện web (lần đầu chạy `npm --prefix web ci`), mở http://localho
 npm --prefix web run dev
 ```
 
+Airflow chạy trên máy vì crawler cần màn hình (D-024). Cài một lần theo constraints chính thức của 2.11 vào `.venv-airflow`, rồi mở http://localhost:8080:
+
+```bash
+scripts/airflow.sh standalone
+```
+
 MinIO console: http://localhost:9001 (tài khoản lấy từ `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`).
 
 ## Tiến độ
@@ -82,4 +88,4 @@ MinIO console: http://localhost:9001 (tài khoản lấy từ `MINIO_ACCESS_KEY`
 - [x] M7. Follow-up engine + answer + API (`uvicorn --factory luatgt.api.main:app_factory`)
 - [x] M8. Frontend (`npm --prefix web run dev`, cần API đang chạy; `API_URL` mặc định `http://localhost:8000`)
 - [x] M9. Streaming + dashboard (`luatgt stream`, `luatgt stream --once`, `eval/run_watermark_experiment.py`, kết quả: [docs/M9_WATERMARK.md](docs/M9_WATERMARK.md))
-- [ ] M10. Airflow + đánh giá
+- [x] M10. Airflow + đánh giá (`scripts/airflow.sh standalone`, `eval/run_eval.py` xuất `eval/reports/report.md`)

@@ -15,3 +15,5 @@ data/
 
 # Ảnh chụp fixtures: 55 MB, test không dùng, tạo lại được bằng `luatgt crawl --save-fixtures`
 tests/fixtures/**/*.png
+.venv-airflow/
+.airflow/
