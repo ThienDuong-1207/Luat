@@ -184,7 +184,15 @@ Ghi theo quy tắc mục 0.8 của `LuatGT_System_Design.md`. Mỗi mục: vấn
 - **Sửa ở M5:** hành vi của Khoản không có Điểm bị dính vế tiền ("cá nhân, từ 4.000.000…") ở câu dẫn hai mức.
 - **Nghiệm thu trên dữ liệu thật (server uvicorn, model thật):** xem README. Số liệu lấy từ `violations`.
 
+## D-022. Frontend (M8, 01/11/2026)
+- **Bổ sung API ngoài spec 12:** `GET /api/documents/{id}/provisions?as_of=` trả cây điều khoản tại một ngày (kèm `added`: 57 điều khoản do văn bản sửa đổi bổ sung, có version nhưng không có dòng `provisions`). `GET /api/documents` trả thêm `tinh_trang_norm`, `ngay_ban_hanh` và lọc theo giá trị chuẩn hoá. Chi tiết văn bản có `incoming` và khớp `dst_vbpl_id` qua số hiệu vì cột này thường rỗng.
+- **Trình duyệt gọi API qua rewrite của Next** (`API_URL`), cùng origin nên không cần CORS.
+- **Badge trong panel nguyên văn là hiệu lực của chính điều khoản tại ngày áp dụng,** không phải của cả văn bản: điều khoản đang áp dụng của NĐ 168 không được hiện "hết hiệu lực một phần".
+- **Lệch spec 15.3.5:** so sánh phiên bản xếp dọc, không hai cột, vì panel chỉ rộng 440px. Dùng icon Lucide thay emoji 👍/👎.
+- **Thiếu:** số trang PDF: `pdf_page` đang rỗng ở toàn bộ 4.651 điều khoản nên panel không hiện. Trang `/dashboard` và link của nó để M9. Hỏi ngữ cảnh chưa có: câu hỏi mới luôn tạo phiên mới.
+
 ## Câu hỏi mở (cần nhóm quyết định trước milestone liên quan)
 - **Q-1 (M9):** trường `topic` của event: đã áp dụng tạm theo D-021, chờ nhóm xác nhận.
 - **Q-2 (M10):** `dag_build` chạy "sau `dag_crawl_daily`" bằng cơ chế nào? Đề xuất: Airflow Dataset (data-aware scheduling).
+- **Q-4:** NĐ 336/2025/NĐ-CP sửa NĐ 168/2024/NĐ-CP theo metadata vbpl.vn nhưng không có trong seed, cùng NĐ 319/2026 và Luật 143/2025. Có thêm vào kho không?
 - **Q-3:** mục 0 của spec ghi "Milestone ở mục 14", thực tế là mục 17.

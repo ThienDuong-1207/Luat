@@ -63,6 +63,12 @@ curl -X POST localhost:8000/api/ask -H 'Content-Type: application/json' \
   -d '{"question": "uống rượu lái xe bị phạt bao nhiêu", "as_of_date": "2026-10-20"}'
 ```
 
+Giao diện web (lần đầu chạy `npm --prefix web ci`), mở http://localhost:3000:
+
+```bash
+npm --prefix web run dev
+```
+
 MinIO console: http://localhost:9001 (tài khoản lấy từ `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`).
 
 ## Tiến độ
@@ -74,6 +80,6 @@ MinIO console: http://localhost:9001 (tài khoản lấy từ `MINIO_ACCESS_KEY`
 - [x] M5. Violations + quality (`luatgt build-gold`, mẫu kiểm tra: [docs/M5_SAMPLE_CHECK.md](docs/M5_SAMPLE_CHECK.md))
 - [x] M6. Index + retrieval (`luatgt build-index`, `luatgt search`, `eval/run_eval.py`)
 - [x] M7. Follow-up engine + answer + API (`uvicorn --factory luatgt.api.main:app_factory`)
-- [ ] M8. Frontend
+- [x] M8. Frontend (`npm --prefix web run dev`, cần API đang chạy; `API_URL` mặc định `http://localhost:8000`)
 - [ ] M9. Streaming + dashboard
 - [ ] M10. Airflow + đánh giá

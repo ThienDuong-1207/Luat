@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink: #111111;
+  --paper: #fffdf5;
+  --surface: #ffffff;
+  --yellow: #ffd23f;
+  --blue: #3d9bff;
+  --pink: #ff6fb5;
+  --green: #4ade80;
+  --red: #ff4d4d;
+  --orange: #ff9f43;
+  --muted: #5a5a5a;
+  --red-soft: color-mix(in srgb, var(--red) 28%, var(--surface));
+  --green-soft: color-mix(in srgb, var(--green) 32%, var(--surface));
+  --scrim: color-mix(in srgb, var(--ink) 45%, transparent);
+
+  --border: 3px solid var(--ink);
+  --border-thin: 2px solid var(--ink);
+  --shadow: 5px 5px 0 0 var(--ink);
+  --shadow-sm: 3px 3px 0 0 var(--ink);
+  --shadow-hover: 7px 7px 0 0 var(--ink);
+  --shadow-press: 0 0 0 0 var(--ink);
+  --radius: 6px;
+  --motion: 120ms;
+}
+
+@layer base {
+  html {
+    font-size: 16px;
+  }
+  @media (min-width: 768px) {
+    html {
+      font-size: 17px;
+    }
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    line-height: 1.65;
+  }
+  :focus-visible {
+    outline: 3px solid var(--blue);
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  /* Nút: nhấc lên khi hover, nhấn xuống khi active */
+  .brutal-press {
+    transition:
+      transform var(--motion) ease-out,
+      box-shadow var(--motion) ease-out;
+  }
+  .brutal-press:hover:not(:disabled) {
+    transform: translate(-2px, -2px);
+    box-shadow: var(--shadow-hover);
+  }
+  .brutal-press:active:not(:disabled) {
+    transform: translate(5px, 5px);
+    box-shadow: var(--shadow-press);
+  }
+
+  .label {
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+  }
+
+  /* Nội dung pháp lý: nền trắng, chữ thường, line-height rộng */
+  .legal {
+    font-weight: 400;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+  }
+  .legal ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+  }
+  .legal li + li,
+  .legal p + p,
+  .legal p + ul {
+    margin-top: 0.5rem;
+  }
+
+  .loading-stripes {
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--ink) 0 12px,
+      var(--yellow) 12px 24px
+    );
+    background-size: 200% 100%;
+    animation: stripes 1.2s linear infinite;
+  }
+
+  .panel {
+    position: fixed;
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    max-height: none;
+    background: var(--surface);
+    color: var(--ink);
+    border: var(--border);
+    /* Mobile: bottom sheet */
+    inset: auto 0 0 0;
+    width: 100%;
+    height: 85dvh;
+    border-bottom: 0;
+    animation: sheet-in 150ms ease-out;
+  }
+  @media (min-width: 768px) {
+    /* Desktop: panel bên phải rộng 440px */
+    .panel {
+      inset: 0 0 0 auto;
+      width: 440px;
+      height: 100dvh;
+      border-width: 0 0 0 3px;
+      animation-name: panel-in;
+    }
+  }
+  .panel::backdrop {
+    background: var(--scrim);
+  }
+}
+
+@keyframes stripes {
+  to {
+    background-position: -68px 0;
+  }
+}
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes panel-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brutal-press,
+  .brutal-press:hover:not(:disabled),
+  .brutal-press:active:not(:disabled) {
+    transition: none;
+    transform: none;
+  }
+  .loading-stripes,
+  .panel {
+    animation: none;
+  }
+}

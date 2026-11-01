@@ -193,6 +193,8 @@ def client(ctx, tmp_path):
     with engine.begin() as conn:
         conn.execute(text("""INSERT INTO documents (vbpl_id, so_hieu, ten_van_ban, source_url, first_seen_at, last_crawled_at)
                              VALUES ('1', '1/2024/NĐ-CP', 'Nghị định 1', 'https://vbpl.vn/x', now(), now())"""))
+        conn.execute(text("""INSERT INTO provisions (provision_id, vbpl_id, provision_key, level, number, text, ordinal)
+                             VALUES ('1:D7', '1', :k, 'dieu', '7', '', 0)"""), {"k": f"{K}/D7"})
         for key, vehicle, low, high, level, act in rows:
             conn.execute(text("""INSERT INTO provision_versions (provision_key, version_no, text, source_vbpl_id,
                                  valid_from, valid_to, is_current)
@@ -250,6 +252,12 @@ def test_api_provision_history_and_documents(client):
     assert client.get("/api/documents").json()[0]["so_hieu"] == "1/2024/NĐ-CP"
     assert client.get("/api/documents/1").json()["relations"] == []
     assert client.get("/api/documents/9").status_code == 404
+    assert r["label"] == "Điểm a khoản 2 Điều 7" and r["document"]["so_hieu"] == "1/2024/NĐ-CP"
+    tree = client.get("/api/documents/1/provisions", params={"as_of": "2026-10-20"}).json()["provisions"]
+    assert tree and all("n_versions" in p for p in tree)
+    added = client.get("/api/documents/1/provisions", params={"as_of": "2026-10-20"}).json()["added"]
+    assert {a["label"] for a in added} >= {"Điểm a khoản 2 Điều 7", "Điểm a khoản 1 Điều 6"}
+    assert client.get("/api/documents/9/provisions").status_code == 404
 
 
 @pytest.mark.integration

@@ -18,7 +18,7 @@ from luatgt.common.db import make_engine
 from luatgt.common.storage import Storage
 from luatgt.qa.answer import AskResponse
 from luatgt.qa.llm_client import make_llm_client
-from luatgt.qa.service import QAService
+from luatgt.qa.service import QAService, citation_label
 from luatgt.retrieval.embed import Embedder, SentenceTransformerEmbedder
 from luatgt.retrieval.query import today_vn
 
@@ -94,9 +94,10 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None,
     def documents(tinh_trang: str | None = None, loai: str | None = None) -> list[dict]:
         with engine.connect() as conn:
             rows = conn.execute(text("""
-                SELECT vbpl_id, so_hieu, ten_van_ban, loai_van_ban, tinh_trang, ngay_hieu_luc, ngay_het_hieu_luc
+                SELECT vbpl_id, so_hieu, ten_van_ban, loai_van_ban, tinh_trang, tinh_trang_norm, ngay_ban_hanh,
+                       ngay_hieu_luc, ngay_het_hieu_luc
                 FROM documents
-                WHERE (CAST(:t AS text) IS NULL OR tinh_trang = :t) AND (CAST(:l AS text) IS NULL OR loai_van_ban = :l)
+                WHERE (CAST(:t AS text) IS NULL OR tinh_trang_norm = :t) AND (CAST(:l AS text) IS NULL OR loai_van_ban = :l)
                 ORDER BY ngay_hieu_luc DESC NULLS LAST"""), {"t": tinh_trang, "l": loai}).mappings().all()
         return [dict(r) for r in rows]
 
@@ -106,23 +107,66 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None,
             row = conn.execute(text("SELECT * FROM documents WHERE vbpl_id = :i"), {"i": vbpl_id}).mappings().first()
             if row is None:
                 raise HTTPException(404, "Không tìm thấy văn bản")
-            relations = conn.execute(text("SELECT * FROM document_relations WHERE src_vbpl_id = :i"),
-                                     {"i": vbpl_id}).mappings().all()
+            # dst_vbpl_id thường rỗng trong dữ liệu gốc: khớp lại theo số hiệu để link được văn bản trong kho
+            relations = conn.execute(text("""
+                SELECT r.relation_type, r.dst_so_hieu, r.origin, d.vbpl_id AS dst_vbpl_id, d.ngay_hieu_luc
+                FROM document_relations r LEFT JOIN documents d ON d.so_hieu = r.dst_so_hieu
+                WHERE r.src_vbpl_id = :i ORDER BY d.ngay_hieu_luc NULLS LAST, r.dst_so_hieu"""),
+                {"i": vbpl_id}).mappings().all()
+            incoming = conn.execute(text("""
+                SELECT r.relation_type, s.so_hieu AS src_so_hieu, s.vbpl_id AS src_vbpl_id, s.ngay_hieu_luc
+                FROM document_relations r JOIN documents s ON s.vbpl_id = r.src_vbpl_id
+                WHERE r.dst_so_hieu = :s ORDER BY s.ngay_hieu_luc"""), {"s": row["so_hieu"]}).mappings().all()
             files = conn.execute(text("SELECT * FROM document_files WHERE vbpl_id = :i"),
                                  {"i": vbpl_id}).mappings().all()
-        return {**dict(row), "relations": [dict(r) for r in relations], "files": [dict(f) for f in files]}
+        return {**dict(row), "relations": [dict(r) for r in relations], "incoming": [dict(r) for r in incoming],
+                "files": [dict(f) for f in files]}
+
+    @app.get("/api/documents/{vbpl_id}/provisions")
+    def document_provisions(vbpl_id: str, as_of: date | None = None) -> dict:
+        """Cây điều khoản tại ngày `as_of`. `text` rỗng ở điều khoản đã bãi bỏ hoặc chưa có hiệu lực."""
+        when = as_of or today_vn()
+        with engine.connect() as conn:
+            if conn.execute(text("SELECT 1 FROM documents WHERE vbpl_id = :i"), {"i": vbpl_id}).first() is None:
+                raise HTTPException(404, "Không tìm thấy văn bản")
+            rows = conn.execute(text("""
+                SELECT p.provision_id, p.provision_key, p.level, p.number, p.title, p.parent_id,
+                       COALESCE(v.text, CASE WHEN p.level IN ('phan', 'chuong', 'muc') THEN p.text END) AS text,
+                       (SELECT count(*) FROM provision_versions c WHERE c.provision_key = p.provision_key) AS n_versions
+                FROM provisions p
+                LEFT JOIN provision_versions v ON v.provision_key = p.provision_key
+                     AND :d >= v.valid_from AND :d < v.valid_to
+                WHERE p.vbpl_id = :i ORDER BY p.ordinal"""), {"i": vbpl_id, "d": when}).mappings().all()
+            # Điều khoản do văn bản sửa đổi bổ sung: có version nhưng không có dòng `provisions`
+            added = conn.execute(text("""
+                SELECT v.provision_key, v.text, v.valid_from FROM provision_versions v
+                WHERE split_part(v.provision_key, '/', 1) = :prefix AND v.text IS NOT NULL
+                  AND :d >= v.valid_from AND :d < v.valid_to
+                  AND NOT EXISTS (SELECT 1 FROM provisions p WHERE p.provision_key = v.provision_key)
+                ORDER BY v.provision_key"""),
+                {"prefix": rows[0]["provision_key"].split("/")[0] if rows else "", "d": when}).mappings().all()
+        return {"as_of": when, "provisions": [dict(r) for r in rows],
+                "added": [{**dict(r), "label": citation_label(r["provision_key"])} for r in added]}
 
     @app.get("/api/provisions/{provision_key:path}")
     def provision(provision_key: str, as_of: date | None = None) -> dict:
         when = as_of or today_vn()
         with engine.connect() as conn:
             rows = conn.execute(text("""
-                SELECT version_no, text, source_vbpl_id, valid_from, valid_to FROM provision_versions
-                WHERE provision_key = :k ORDER BY version_no"""), {"k": provision_key}).mappings().all()
+                SELECT v.version_no, v.text, v.source_vbpl_id, s.so_hieu AS source_so_hieu, v.valid_from, v.valid_to
+                FROM provision_versions v LEFT JOIN documents s ON s.vbpl_id = v.source_vbpl_id
+                WHERE v.provision_key = :k ORDER BY v.version_no"""), {"k": provision_key}).mappings().all()
+            # Điều khoản bổ sung không có dòng `provisions`: lấy văn bản gốc qua Điều cha cùng tiền tố khoá
+            origin = conn.execute(text("""
+                SELECT d.vbpl_id, d.so_hieu, d.source_url, d.tinh_trang_norm, p.pdf_page
+                FROM provisions p JOIN documents d USING (vbpl_id)
+                WHERE p.provision_key = :k OR p.provision_key = split_part(:k, '/', 1) || '/' || split_part(:k, '/', 2)
+                ORDER BY length(p.provision_key) DESC LIMIT 1"""), {"k": provision_key}).mappings().first()
         if not rows:
             raise HTTPException(404, "Không tìm thấy điều khoản")
         current = next((dict(r) for r in rows if r["valid_from"] <= when < r["valid_to"]), None)
-        return {"provision_key": provision_key, "as_of": when, "current": current, "versions": [dict(r) for r in rows]}
+        return {"provision_key": provision_key, "label": citation_label(provision_key), "as_of": when,
+                "document": dict(origin) if origin else None, "current": current, "versions": [dict(r) for r in rows]}
 
     @app.post("/api/feedback")
     def feedback(body: FeedbackRequest) -> dict:
