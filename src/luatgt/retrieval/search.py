@@ -34,7 +34,15 @@ class SearchHit:
     valid_from: date
     valid_to: date
     score: float
+    similarity: float | None = None  # cosine của nhánh vector; None nếu chunk chỉ có ở nhánh keyword
     violations: list[dict] = field(default_factory=list)
+
+
+def expand_query(question: str, expansions: dict[str, str]) -> str:
+    """Thêm chữ trong văn bản luật cho từ đời thường có trong câu hỏi."""
+    low = question.lower()
+    extra = dict.fromkeys(v for k, v in expansions.items() if k in low)
+    return " ".join([question, *extra])
 
 
 def keyword_query(question: str, stopwords: list[str]) -> str:
@@ -58,7 +66,7 @@ def _keyword(conn, query: str, where: str, params: dict, n: int) -> list[dict]:
 def _vector(conn, vector: list[float], where: str, params: dict, n: int) -> list[dict]:
     return [dict(r) for r in conn.execute(text(f"""
         WITH f AS MATERIALIZED (SELECT * FROM chunks WHERE embedding IS NOT NULL {where})
-        SELECT {COLUMNS} FROM f
+        SELECT {COLUMNS}, 1 - (embedding <=> CAST(:v AS vector)) AS similarity FROM f
         ORDER BY embedding <=> CAST(:v AS vector), chunk_id LIMIT :n"""),
         {**params, "v": to_pgvector(vector), "n": n}).mappings()]
 
@@ -70,7 +78,7 @@ def rrf_merge(branches: list[list[dict]], rrf_k: int) -> list[tuple[dict, float]
     for branch in branches:
         for rank, row in enumerate(branch, 1):
             scores[row["chunk_id"]] = scores.get(row["chunk_id"], 0.0) + 1 / (rrf_k + rank)
-            rows[row["chunk_id"]] = row
+            rows[row["chunk_id"]] = {**rows.get(row["chunk_id"], {}), **row}
     return sorted(((rows[c], s) for c, s in scores.items()), key=lambda x: (-x[1], x[0]["chunk_id"]))
 
 
@@ -95,6 +103,7 @@ def hybrid_search(
     where = f"AND {VALID}" if apply_validity else ""
     params = {"as_of": as_of} if apply_validity else {}
     n = cfg.branch_top_n
+    query = expand_query(query, cfg.query_expansions)
     with engine.connect() as conn:
         branches = []
         if mode in ("hybrid", "keyword"):

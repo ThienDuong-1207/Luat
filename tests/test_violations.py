@@ -111,6 +111,11 @@ def test_per_person_fine_splits_individual_and_organization(real):
     assert not rows["to_chuc"].needs_review
 
 
+def test_inline_act_skips_all_fine_clauses(real):
+    v = at(real[0], f"{K}/D12/K7", AFTER)[0]
+    assert v.hanh_vi.startswith("thực hiện hành vi sử dụng trái phép lòng đường")
+
+
 def test_warning_has_no_fine(real):
     v = at(real[0], f"{K}/D6/K1a", AFTER)[0]
     assert v.muc_phat_min is None and "Phạt cảnh cáo" in v.bien_phap_bo_sung

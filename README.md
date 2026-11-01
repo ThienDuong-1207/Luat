@@ -55,6 +55,14 @@ Index và tìm kiếm (cần `pip install -e ".[ml]"`; lần đầu tải model 
 .venv/bin/python eval/run_eval.py                                       # Recall@5, xuất eval/reports/retrieval.md
 ```
 
+API hỏi đáp (cần `pip install -e ".[api]"`). Không đặt `LLM_API_KEY` thì câu trả lời dạng template:
+
+```bash
+.venv/bin/uvicorn --factory luatgt.api.main:app_factory --port 8000
+curl -X POST localhost:8000/api/ask -H 'Content-Type: application/json' \
+  -d '{"question": "uống rượu lái xe bị phạt bao nhiêu", "as_of_date": "2026-10-20"}'
+```
+
 MinIO console: http://localhost:9001 (tài khoản lấy từ `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`).
 
 ## Tiến độ
@@ -65,7 +73,7 @@ MinIO console: http://localhost:9001 (tài khoản lấy từ `MINIO_ACCESS_KEY`
 - [x] M4. Sửa đổi + phiên bản (SCD2) (`luatgt build-gold`, `luatgt provision <key> --as-of <ngày>`)
 - [x] M5. Violations + quality (`luatgt build-gold`, mẫu kiểm tra: [docs/M5_SAMPLE_CHECK.md](docs/M5_SAMPLE_CHECK.md))
 - [x] M6. Index + retrieval (`luatgt build-index`, `luatgt search`, `eval/run_eval.py`)
-- [ ] M7. Follow-up engine + answer + API
+- [x] M7. Follow-up engine + answer + API (`uvicorn --factory luatgt.api.main:app_factory`)
 - [ ] M8. Frontend
 - [ ] M9. Streaming + dashboard
 - [ ] M10. Airflow + đánh giá

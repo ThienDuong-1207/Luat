@@ -82,12 +82,21 @@ class RetrievalSettings(BaseModel):
     rrf_k: int = 60
     rerank: bool = False
     stopwords: list[str] = Field(default_factory=list)
+    query_expansions: dict[str, str] = Field(default_factory=dict)
 
 
 class LLMSettings(BaseModel):
     provider: str = "anthropic"
     model: str | None = None
     api_key: SecretStr | None = None
+
+
+class QASettings(BaseModel):
+    min_similarity: float = 0.55
+    similarity_margin: float = 0.06
+    candidate_chunks: int = 12
+    max_facts: int = 8
+    disclaimer: str = "Thông tin tra cứu, không thay thế tư vấn pháp lý."
 
 
 class QualitySettings(BaseModel):
@@ -113,6 +122,7 @@ class Settings(BaseModel):
     embedding: EmbeddingSettings = Field(default_factory=EmbeddingSettings)
     retrieval: RetrievalSettings = Field(default_factory=RetrievalSettings)
     llm: LLMSettings = Field(default_factory=LLMSettings)
+    qa: QASettings = Field(default_factory=QASettings)
     quality: QualitySettings = Field(default_factory=QualitySettings)
     streaming: StreamingSettings = Field(default_factory=StreamingSettings)
 

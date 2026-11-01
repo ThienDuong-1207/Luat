@@ -30,8 +30,7 @@ RE_EXTRA_HEAD = re.compile(r"^Ngoài việc\b")
 RE_PER_PERSON = re.compile(r"trên mỗi người")
 RE_TOTAL_CAP = re.compile(r"tối đa không vượt quá\s+([\d.]+)\s+đồng")
 RE_WHO = re.compile(r"đối với\s+(?:chủ phương tiện là\s+)?(cá nhân|tổ chức)")
-RE_INLINE_ACT = re.compile(r"đồng\s+(đối với\s+.+)$", re.DOTALL)
-RE_SEIZE_INLINE = re.compile(r"^Tịch thu phương tiện\s+(đối với\s+.+)$", re.DOTALL)
+RE_SEIZE_INLINE = re.compile(r"^Tịch thu phương tiện\s+đối với\s+(.+)$", re.DOTALL)
 RE_REF_START = re.compile(r"quy định (?:tại|lại)\s+")
 RE_REF_END = re.compile(r"\s(?:(?:còn\s+)?bị|buộc|phải|trong trường hợp|mà|nếu)\s|\s*\((?:trường hợp|khi)\b")
 # Động từ chế tài cụ thể: điều kiện có thể chứa "bị" thường ("bị tẩy xóa", "đã bị thay đổi")
@@ -116,10 +115,6 @@ def _money(s: str) -> int:
 
 def _clean(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip(" ;.")
-
-
-def _strip_for(s: str) -> str:
-    return re.sub(r"^đối với\s+", "", s)
 
 
 def _vehicles(text: str, cfg: ViolationConfig) -> tuple[str, ...]:
@@ -218,8 +213,10 @@ class _Article:
         if not fines:
             self.issues.append(("fine_not_parsed", key, {"text": head[:200]}))
             return
-        inline = RE_INLINE_ACT.search(head)
-        acts = [(k, self.text(k)) for k in kids] or [(key, _strip_for(inline.group(1)) if inline else head)]
+        # Khoản không có Điểm: hành vi là phần sau mức phạt cuối ("… đối với tổ chức thực hiện hành vi …")
+        last = list(RE_FINE.finditer(head))[-1]
+        inline = re.sub(r"^\s*(?:đối với\s+)?", "", head[last.end():])
+        acts = [(k, self.text(k)) for k in kids] or [(key, inline or head)]
         ambiguous = len(fines) > 1 and any(w is None for _, _, w, _ in fines)
         for k, act in acts:
             for low, high, who, cap in fines:
@@ -237,7 +234,7 @@ class _Article:
     def _seizure(self, key: str, head: str) -> None:
         kids = _children(self.keys, key)
         inline = RE_SEIZE_INLINE.search(head)
-        for k, act in [(k, self.text(k)) for k in kids] or [(key, _strip_for(inline.group(1)) if inline else head)]:
+        for k, act in [(k, self.text(k)) for k in kids] or [(key, inline.group(1) if inline else head)]:
             self._add(k, act, head, measures=[SEIZE], doi_tuong=self._default_who(head))
 
     def _extra(self, key: str, head: str) -> list[Sanction]:

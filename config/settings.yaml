@@ -63,6 +63,13 @@ retrieval:
   branch_top_n: 50
   rrf_k: 60
   rerank: false
+  # Từ đời thường → chữ trong văn bản luật, thêm vào câu truy vấn (D-021)
+  query_expansions:
+    "đèn đỏ": "không chấp hành hiệu lệnh của đèn tín hiệu giao thông"
+    "bằng lái": "giấy phép lái xe"
+    "rượu": "trong máu hoặc hơi thở có nồng độ cồn"
+    "bia": "trong máu hoặc hơi thở có nồng độ cồn"
+    "xe máy": "xe mô tô, xe gắn máy"
   # Từ hỏi, không giúp phân biệt điều khoản; nhánh keyword nối từ bằng OR (D-020)
   stopwords: [bị, phạt, bao, nhiêu, thì, là, có, không, gì, nào, sao, như, thế, tôi, mình, em, anh, chị,
               cho, của, và, hay, hoặc, khi, nếu, mà, ở, tại, trên, với, được, những, các, một, hỏi, ạ, nhé]
@@ -70,6 +77,13 @@ retrieval:
 llm:
   provider: anthropic
   model: null
+
+qa:
+  # Cosine thấp nhất của chunk tốt nhất. Đo 12 câu: giao thông ≥ 0,65; lạc đề ≤ 0,51 (D-021)
+  min_similarity: 0.55
+  similarity_margin: 0.06  # ứng viên: chunk có cosine ≥ cosine tốt nhất − margin (RRF không so được giữa các câu)
+  candidate_chunks: 12     # và nằm trong từng này chunk đầu
+  max_facts: 8             # số dòng tối đa trong một câu trả lời
 
 quality:
   fine_min_vnd: 50000

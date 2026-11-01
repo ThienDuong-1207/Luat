@@ -170,7 +170,21 @@ Ghi theo quy tắc mục 0.8 của `LuatGT_System_Design.md`. Mỗi mục: vấn
 - **Việc nên làm:** nhóm (1) dùng slot phương tiện để ưu tiên ở M7. Nhóm (2) cần từ điển đồng nghĩa. Chưa làm, vì chỉnh theo chính bộ câu hỏi này dễ làm số liệu đẹp giả.
 - **Đáp án eval là bản nháp** do Claude soạn từ dữ liệu đã parse, chưa được nhóm đối chiếu (spec 16.1). Hybrid không lọc vẫn có Recall@20 cao vì `is_hit` chỉ tính đúng phiên bản; cột cuối mới cho thấy tác dụng của bộ lọc.
 
+## D-021. Câu hỏi phụ, trả lời, API (M7, 01/11/2026)
+- **Ngưỡng `not_found` (spec 11.2 mục 4):** cosine của chunk tốt nhất ≥ 0,55 (`qa.min_similarity`). Đo trên 12 câu thử: câu giao thông ≥ 0,65, câu lạc đề ≤ 0,51. Mẫu nhỏ, cần đo lại khi có bộ câu hỏi lạc đề.
+- **Ứng viên:** chunk trong `candidate_chunks` đầu và có cosine ≥ cosine tốt nhất − `similarity_margin`, vì điểm RRF không so được giữa các câu. Thiếu bước này, "vượt đèn đỏ" bị hỏi nồng độ cồn.
+- **Lệch spec 10.2 bước 4:** spec trả `not_found` khi không có violation. Câu hỏi về quy định ("xe máy được chở mấy người") không có violation nhưng có điều khoản, nên câu không có ý hỏi mức phạt (`RE_PENALTY_INTENT`) được trả lời bằng trích nguyên văn, không có `facts`.
+- **Lệch spec 10.2 bước 3:** mục `khong_ap_dung`/`co_gioi` chỉ dùng khi không có mục đúng loại xe.
+- **Chưa làm:** chiều `thoi_diem` (spec 10.2). Ứng viên hiện lọc đúng một ngày nên không có nhiều version để hỏi; người dùng đổi `as_of_date` hoặc nêu ngày trong câu. Thống kê "câu hỏi liên quan" từ `qa_sessions` chờ có dữ liệu.
+- **Mở rộng truy vấn (`retrieval.query_expansions`):** thêm 5 cụm từ đời thường → chữ luật. Đảo quyết định ở D-020: "vượt đèn đỏ" là câu hỏi phổ biến, trả sai mức phạt nặng hơn việc số đo khó diễn giải. Recall@5 từ 77,3% lên 87,9%, Recall@20 từ 90,9% lên 92,4%, **nhưng các cụm này chọn sau khi xem câu trượt của chính bộ eval**, nên số mới lạc quan. Cần đo lại trên câu hỏi mới.
+- **LLM:** `LLM_API_KEY` trống → câu trả lời dạng template, đủ con số, trích dẫn và chế tài có điều kiện. Có khoá → `claude-opus-5-5`, effort `low`, bật `fallbacks: "default"` (server-side fallback khi bị từ chối). Provider khác chưa viết. Chế độ LLM đã test bằng client giả, **chưa chạy với API thật**.
+- **Q-1 (topic của event):** đề xuất tạm: chiều đang hỏi, hoặc thuộc tính phân biệt của fact đầu, hoặc `unknown`. Thay cho đề xuất cũ.
+- **Feedback:** spec không có bảng nên chỉ ghi event; ghi chú (`note`) chưa được lưu. Không lưu định danh người dùng.
+- **`luatgt.qa.service`** là module thêm ngoài spec 4, gom luồng để API mỏng. `/api/health` chỉ báo model đã nạp hay chưa.
+- **Sửa ở M5:** hành vi của Khoản không có Điểm bị dính vế tiền ("cá nhân, từ 4.000.000…") ở câu dẫn hai mức.
+- **Nghiệm thu trên dữ liệu thật (server uvicorn, model thật):** xem README. Số liệu lấy từ `violations`.
+
 ## Câu hỏi mở (cần nhóm quyết định trước milestone liên quan)
-- **Q-1 (M9):** trường `topic` của event được gán thế nào? Đề xuất: chiều/slot chính của violation có điểm retrieval cao nhất, hoặc `unknown`.
+- **Q-1 (M9):** trường `topic` của event: đã áp dụng tạm theo D-021, chờ nhóm xác nhận.
 - **Q-2 (M10):** `dag_build` chạy "sau `dag_crawl_daily`" bằng cơ chế nào? Đề xuất: Airflow Dataset (data-aware scheduling).
 - **Q-3:** mục 0 của spec ghi "Milestone ở mục 14", thực tế là mục 17.
