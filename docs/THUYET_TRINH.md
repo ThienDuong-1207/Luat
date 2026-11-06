@@ -1,6 +1,10 @@
 # LuậtGT: tra cứu luật giao thông có trích dẫn
 
-Tài liệu nguồn cho bài thuyết trình. Số liệu lấy từ lần chạy ngày 01/11/2026.
+Tài liệu nguồn cho bài thuyết trình. Số liệu lấy từ lần chạy ngày 06/11/2026, khớp với spec v1.1 (`LuatGT_System_Design.md`).
+
+**Khung thuyết trình theo reading list:**
+- 12 phút trình bày cộng 3 phút hỏi đáp; tối đa 8 slide nội dung; mọi thành viên đều nói.
+- Ghi nguồn cho mọi nhận định mượn từ tài liệu, và ghi rõ phần nào có dùng AI hỗ trợ.
 
 ---
 
@@ -122,7 +126,7 @@ Mỗi hành vi vi phạm được trích thành một dòng có cấu trúc: hà
 
 ### Bước 5: Kiểm tra chất lượng
 
-Bản ghi nghi ngờ đi vào khu cách ly (quarantine), không bị bỏ âm thầm. Lỗi nghiêm trọng dừng việc xuất bản, dữ liệu cũ vẫn phục vụ.
+Bản ghi nghi ngờ đi vào khu cách ly (quarantine), không bị bỏ âm thầm. Mỗi bản ghi gắn với lần chạy (`run_id`) sinh ra nó, nên truy được lỗi đến từ lần crawl hay lần build nào. Lỗi nghiêm trọng dừng việc xuất bản, dữ liệu cũ vẫn phục vụ: Gold được nạp vào Postgres trong **một transaction**, lỗi giữa chừng thì rollback, không có trạng thái nửa vời.
 
 ### Bước 6: Tạo chỉ mục tìm kiếm
 
@@ -209,11 +213,23 @@ Airflow điều phối: crawl hằng ngày, kiểm tra lại văn bản hằng t
 
 **Kiểm chứng:** chạy toàn bộ từ cơ sở dữ liệu rỗng qua Airflow, kết quả trùng khớp về số dòng và mã băm với dữ liệu đang dùng. Điều này chứng minh pipeline **tái lập được**, chưa chứng minh dữ liệu đúng về mặt pháp lý.
 
+**Quan sát vận hành:** mỗi lần chạy job build được ghi vào bảng `job_runs`, gồm trạng thái, thời gian chạy và ngày crawl gần nhất của dữ liệu đầu vào. Dashboard hiển thị các thông tin này. Lần chạy ngày 06/11/2026:
+
+| Job | Thời gian |
+|---|---|
+| Bronze → Silver | 12,7 s |
+| Silver → Gold | 8,1 s |
+| Tạo chỉ mục | 15,7 s |
+
+**Nói đúng về "exactly-once":** nguồn event là at-least-once (có thể trùng hoặc trễ). Kết quả tổng hợp đúng một lần là nhờ checkpoint, khử trùng theo `event_id` trong phạm vi watermark, và ghi upsert idempotent. Không gọi đây là exactly-once đầu-cuối.
+
 ---
 
 ## 8. Kết quả đánh giá
 
-Đo trên 66 câu, đáp án là bản nháp, nhóm chưa đối chiếu với văn bản gốc.
+> **Phải nói rõ khi trình bày:** đây là **số trên tập dev**. 66 câu này đã được dùng để chỉnh tham số tìm kiếm (các cụm từ đồng nghĩa, ngưỡng), nên số có phần lạc quan. Theo nguyên tắc "không chọn mô hình trên tập test" (P11), kết quả cuối phải đo trên tập test gồm câu mới, do thành viên không chỉnh tham số soạn trước khi chạy hệ thống. **Tập test chưa có.**
+
+Đo trên 66 câu dev; đáp án là bản nháp, nhóm chưa đối chiếu với văn bản gốc. Chạy `eval/run_eval.py` hai lần cho cùng số liệu, và báo cáo có thẻ tái lập (commit, hash bộ câu hỏi và cấu hình, md5 dữ liệu).
 
 | Chỉ số | Kết quả |
 |---|---|
@@ -235,6 +251,18 @@ So sánh cấu hình tìm kiếm:
 
 **Thông điệp:** bộ lọc hiệu lực loại hoàn toàn trường hợp bản luật sai ngày xếp trước bản đúng.
 
+Chỉ số tách theo nhóm (P12; vẫn là số dev, mẫu nhỏ):
+
+| Nhóm | Recall@5 | Trích đúng điều khoản |
+|---|---|---|
+| Tổng | 87,9% (58/66) | 80,3% (53/66) |
+| Ô tô | 89,7% (26/29) | 89,7% (26/29) |
+| Xe máy | 90,5% (19/21) | 71,4% (15/21) |
+| Đáp án nằm trong NĐ 168/2024 | 93,3% (56/60) | 85,0% (51/60) |
+| Đáp án nằm ở luật và nghị định khác | 2/6 | 2/6 |
+
+**Thông điệp:** con số trung bình che đi điểm yếu. Hệ thống làm tốt với câu về mức phạt trong NĐ 168, nhưng yếu với câu về quy định chung trong luật; 4/8 câu trượt Recall@5 thuộc nhóm này.
+
 Lưu ý khi trình bày:
 
 - Recall có phần lạc quan, vì các cụm từ đồng nghĩa được chọn sau khi xem câu trượt của chính bộ eval.
@@ -251,32 +279,45 @@ Xếp theo mức ưu tiên:
 |---|---|---|---|
 | 1 | Thiếu văn bản sửa đổi: NĐ 336/2025, NĐ 319/2026, Luật 143/2025 | Thêm vào seed, kiểm tra lại hiệu lực | Tránh trả lời theo quy định đã cũ |
 | 2 | Chỉ 22,6% trích dẫn trỏ đúng, câu trả lời lẫn hành vi gần nghĩa | Thêm bước xếp hạng lại, lọc ứng viên chặt hơn | Câu trả lời ngắn và chính xác hơn |
-| 3 | Bộ eval 66 câu, đáp án chưa kiểm | Đủ 100 câu, nhóm đối chiếu tay, thêm câu lạc đề | Số liệu đáng tin để báo cáo |
+| 3 | Chưa có tập test; 66 câu dev có đáp án chưa kiểm | Soạn ≥ 34 câu test mới (đã có hạ tầng tách dev/test), nhóm đối chiếu tay, thêm câu lạc đề | Số liệu đáng tin để báo cáo |
+| 3b | Yếu với câu hỏi về quy định chung trong luật (2/6) | Thêm câu dev cho nhóm này, xem lại chunk của Luật 36/2024 và 35/2024 | Bớt phụ thuộc vào một nghị định |
 | 4 | Chưa từ chối câu khó: 66/66 câu đều được trả lời | Hiệu chỉnh ngưỡng trên bộ câu lạc đề, báo độ tin cậy | Giảm trả lời sai một cách tự tin |
 | 5 | Chưa hỏi thời điểm vi phạm, chưa có số trang PDF | Thêm chiều `thoi_diem`, khớp Điều với trang PDF | Đủ yêu cầu thiết kế |
 | 6 | Văn phong template khô | Bật LLM có kiểm tra sau sinh, thử nghiệm với API thật | Dễ đọc hơn, đổi lại có chi phí |
-| 7 | Mỗi event một file, Airflow chạy bản dev | Chuyển Kafka, dùng executor và DB thật khi triển khai | Sẵn sàng cho lưu lượng lớn |
+| 7 | Mỗi event một file, Airflow chạy bản dev | Chuyển Kafka (key = `session_id`, `acks=all`, idempotent producer), dùng executor và DB thật khi triển khai | Sẵn sàng cho lưu lượng lớn |
+| 8 | Silver chỉ là thư mục Parquet, chưa có transaction log | Chuyển Delta Lake khi có ghi đồng thời hoặc cần time travel; hiện an toàn nhờ Airflow chạy tuần tự | Commit nguyên tử, đọc snapshot nhất quán |
+| 9 | API dùng chung tài khoản DB với pipeline | Role quyền tối thiểu: chỉ đọc dữ liệu luật, chỉ ghi `qa_sessions` | Giảm rủi ro bảo mật |
+| 10 | Chưa có bằng chứng Spark (query plan, stage, cache, so sánh định dạng file) | Lưu `explain`, số liệu stage, so sánh có và không có cache, CSV/JSON/Parquet vào `docs/evidence/` | Chứng minh được lựa chọn kỹ thuật bằng số đo |
 
 ---
 
-## 10. Dàn ý thuyết trình
+## 10. Dàn ý thuyết trình (12 phút, 8 slide nội dung)
 
-| Slide | Nội dung | Mục nguồn |
-|---|---|---|
-| 1 | Tên đề tài, thành viên | |
-| 2 | Vấn đề: vì sao hỏi luật khó | 1 |
-| 3 | Giải pháp và nguyên tắc "AI tìm, dữ liệu quyết định" | 2 |
-| 4 | Demo sản phẩm | 3 |
-| 5 | Kiến trúc tổng quan | 4 |
-| 6 | Pipeline dữ liệu Bronze, Silver, Gold | 5 |
-| 7 | Phiên bản điều khoản SCD2 | 5 |
-| 8 | Luồng trả lời và hybrid search | 6 |
-| 9 | Câu hỏi phụ và vai trò của AI | 6 |
-| 10 | Streaming và thí nghiệm watermark | 7 |
-| 11 | Airflow và tính tái lập | 7 |
-| 12 | Kết quả đánh giá | 8 |
-| 13 | Hạn chế và hướng cải thiện | 9 |
-| 14 | Kết luận | |
+Slide tiêu đề và slide nguồn tham khảo không tính vào 8 slide nội dung. Thời lượng là gợi ý; "Người nói" để nhóm tự điền, mỗi thành viên ít nhất một slide.
+
+| Slide | Nội dung | Kiến thức môn học | Mục nguồn | Phút | Người nói |
+|---|---|---|---|---|---|
+| 0 | Tên đề tài, thành viên | | | 0,5 | |
+| 1 | **Vấn đề và câu hỏi dẫn dắt:** luật đổi theo thời gian, người dân dùng từ khác luật, sai số có hậu quả | | 1 | 1 | |
+| 2 | **Giải pháp và demo ngắn:** hỏi → hỏi lại → trả lời có trích dẫn → so sánh phiên bản | | 2, 3 | 2 | |
+| 3 | **Kiến trúc và phương án bị loại:** lake Parquet + Postgres phục vụ; vì sao không chỉ Postgres, vì sao chưa Delta Lake; sơ đồ đường đi khi lỗi | P16; FDE Ch.3 | 4; spec 3.2 | 1,5 | |
+| 4 | **Pipeline Bronze → Silver → Gold:** Bronze bất biến để replay, Parquet, partition theo văn bản, quarantine có `run_id`, Gold nạp trong một transaction | P07, P14; FDE Ch.6, Ch.8 | 5; spec 5 | 1,5 | |
+| 5 | **Phiên bản luật SCD2 và tìm kiếm có lọc hiệu lực:** `valid_from <= ngày < valid_to`; bộ lọc đưa số bản sai phiên bản xếp trước từ 9 về 0 | FDE Ch.8, Ch.9 | 5, 6, 8 | 1,5 | |
+| 6 | **Streaming log và watermark:** bảng 5/15/60 phút; đánh đổi giữa độ đầy đủ, độ trễ và bộ nhớ; ranh giới "đúng một lần" | P09, P10; FDE Ch.7 | 7 | 1,5 | |
+| 7 | **Đánh giá trung thực:** số dev, chưa có tập test, chỉ số theo nhóm cho thấy điểm yếu ở câu về luật, pipeline tái lập được | P11, P12; NIST AI RMF | 8 | 1,5 | |
+| 8 | **Hạn chế và bước tiếp theo:** tập test, văn bản sửa đổi còn thiếu, Delta Lake, bằng chứng Spark | P14, P16 | 9 | 1 | |
+| | Nguồn tham khảo và khai báo dùng AI | | | | |
+
+Tổng khoảng 12 phút. Muốn rút ngắn thì gộp slide 5 vào slide 4.
+
+**Khai báo dùng AI (gợi ý):** code, spec và tài liệu này được viết với hỗ trợ của Claude (Claude Code). Đáp án eval là bản nháp do AI soạn, nhóm chưa đối chiếu. Mọi số liệu trong slide lấy từ lần chạy thật, có báo cáo và thẻ tái lập trong repo.
+
+**Nguồn cần ghi trên slide:**
+- Reis & Housley, *Fundamentals of Data Engineering* (chương ghi ở từng slide).
+- Spark Structured Streaming Programming Guide: reading list dẫn bản 3.5.8, dự án chạy Spark 4.2.0, nên ghi cả hai.
+- NIST AI RMF 1.0; NIST Privacy Framework.
+- Tài liệu Delta Lake (slide 3, 8); Kafka documentation (slide 6).
+- Nguồn dữ liệu: vbpl.vn.
 
 ### Câu chốt gợi ý
 
@@ -291,3 +332,9 @@ Hệ thống không cố làm một chatbot biết mọi thứ. Nó trả lời 
 | Dữ liệu sai thì sao? | Bản ghi nghi ngờ vào quarantine, người dùng mở được nguyên văn; hiện đáp án eval và mẫu trích xuất còn cần nhóm kiểm tay |
 | Vì sao cần streaming cho log? | Log có thể đến trễ và trùng, đây là bài toán event time; còn văn bản luật cập nhật theo ngày nên dùng batch |
 | Hệ thống có thu thập dữ liệu cá nhân không? | Không lưu thông tin định danh người dùng |
+| Số 87,9% có tin được không? | Đó là số dev, đã dùng để chỉnh tham số nên lạc quan; kết quả cuối cần tập test mới, hạ tầng tách dev/test đã có |
+| Có "exactly-once" không? | Nguồn là at-least-once; số tổng hợp đúng một lần nhờ checkpoint, khử trùng theo `event_id` và upsert idempotent. Không phải exactly-once đầu-cuối |
+| Vì sao không dùng HDFS? | File luật vài trăm KB, rất nhỏ so với block 128 MB, sẽ gây vấn đề nhiều file nhỏ cho NameNode; object storage hợp hơn (P01) |
+| Vì sao chưa dùng Delta Lake hay Kafka? | Chưa có ghi đồng thời và lưu lượng còn nhỏ; điều kiện chuyển đổi đã ghi rõ trong spec 5.4 và 13.4 |
+| Dữ liệu nhỏ vậy sao gọi là big data? | Hệ thống minh hoạ cơ chế (phân vùng, phiên bản, streaming, tái lập) và ghi ngưỡng khi nào phải đổi thiết kế; không tuyên bố hiệu năng production |
+| Pipeline lỗi giữa chừng thì sao? | Mỗi lần chạy ghi vào `job_runs`; Gold nạp trong một transaction nên rollback, dữ liệu cũ vẫn phục vụ |

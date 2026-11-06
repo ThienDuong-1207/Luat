@@ -93,6 +93,7 @@ class LLMSettings(BaseModel):
 
 class QASettings(BaseModel):
     min_similarity: float = 0.55
+    min_similarity_keyword: float = 0.50
     similarity_margin: float = 0.06
     candidate_chunks: int = 12
     max_facts: int = 8

@@ -296,6 +296,88 @@ Ghi theo quy tắc mục 0.8 của `LuatGT_System_Design.md`. Mỗi mục: vấn
   - md5 của `provision_versions` (`5e0d62151d5d`) và `violations` (`8be2d7f3ce0f`) trùng lần đo ở D-026, nên dữ liệu không đổi.
   - 225/225 test pass. Dashboard đã xem trên trình duyệt, console không có lỗi.
 
+## D-028. Trang hỏi đáp chia 80% / 20% trên màn rộng (06/11/2026)
+- **Bối cảnh:** ở màn 1440px, cột chat 760px chỉ chiếm 53% bề rộng. Bảng mức phạt bị bóp: số tiền xuống 3 dòng, tiêu đề cột ngắt giữa chữ. Panel nguyên văn là modal, che câu trả lời khi đang đọc. Nhóm yêu cầu dùng 80% bề rộng cho hỏi đáp, 20% còn lại cho phần tham chiếu luật.
+- **Quyết định:**
+  - **Màn ≥ 1280px (`xl`):**
+    - Phần hỏi đáp và ô nhập rộng 80% màn hình, cột tham chiếu 20%, dính khi cuộn và cuộn riêng (`ProvisionAside`).
+    - Bấm chip thì focus chuyển sang tiêu đề điều khoản trong cột tham chiếu, để người dùng bàn phím và trình đọc màn hình biết nội dung đã đổi.
+  - **Màn < 1280px:** giữ panel modal và bottom sheet như cũ (`ProvisionPanel`). Hook `useMediaQuery` quyết định dùng cột hay modal; nếu thu nhỏ cửa sổ khi đang mở điều khoản thì điều khoản chuyển sang modal.
+  - Trang `/van-ban/[id]` vẫn dùng modal.
+  - `Table` có thêm cờ `nowrap`, chỉ áp dụng từ `xl`.
+- **Phương án bị loại:**
+  - Chia 80/20 ở mọi cỡ: 20% của 1024px chỉ khoảng 205px, quá hẹp để đọc văn bản luật.
+  - Tăng đều lên 960px: đề xuất ban đầu, nhóm chọn tăng mạnh hơn.
+- **Hệ quả:**
+  - Ở màn rất rộng, dòng chữ câu trả lời dài khoảng 130 ký tự, khó đọc hơn mức 60–80 ký tự khuyến nghị; nhóm chấp nhận để bảng và ô nhập rộng.
+  - Cột tham chiếu chỉ 256–288px ở màn 1280–1440px, nên phần so sánh phiên bản xếp dọc.
+- **Kiểm chứng ngày 06/11/2026 trên trình duyệt:**
+  - 1440px: hỏi đáp 1152px, tham chiếu 288px.
+  - 1280px: hỏi đáp 1024px, tham chiếu 256px; bảng không tràn.
+  - 1024px: chat 760px, chip mở modal.
+  - 375px: như cũ.
+  - Không có thanh cuộn ngang ở cỡ nào, console không lỗi, `tsc` qua.
+
+## D-029. Luôn hỏi loại xe, câu hỏi về quy định kèm mức phạt, câu hỏi phụ dạng radio, tô vàng mức phạt (06/11/2026)
+- **Bối cảnh:** câu "Chở hàng cồng kềnh trên xe máy" chỉ trích Điều 33 Luật 36/2024, không có mức phạt, vì câu không có từ hỏi mức phạt (`RE_PENALTY_INTENT`, D-021). Thêm ba vấn đề:
+  - "Chở hàng cồng kềnh phạt bao nhiêu?" hỏi loại xe nhưng chỉ cho chọn Ô tô, Máy kéo: thiếu Xe máy, vì lựa chọn chỉ lấy từ ứng viên tìm được.
+  - Một số câu có mức phạt khác nhau theo loại xe nhưng không hỏi, vì `gain` dưới ngưỡng.
+  - Giao diện bấm một nút là gửi ngay, nên lượt có hai câu hỏi (loại xe và nồng độ cồn) chỉ trả lời được một câu.
+- **Quyết định (nhóm đã duyệt 4 phần):**
+  1. **Câu hỏi về quy định kèm mức phạt liên quan.** Vẫn trích nguyên văn, sau đó gọi `hybrid_search(..., penalties_only=True)` (chỉ chunk có violation còn hiệu lực) và chạy luồng mức phạt. `merge_related` ghép hai phần dưới tiêu đề "Mức phạt liên quan", đánh số lại trích dẫn, chỉ giữ một dòng "Căn cứ". Mức phạt cần hỏi lại thì giữ phần quy định ở trên và hỏi tiếp bên dưới. Không có gì đủ liên quan (dưới `min_similarity`) thì chỉ trích quy định như trước. Đảo một phần quyết định ở D-021.
+  2. **Luôn hỏi loại xe.** `followup.yaml` thêm `phuong_tien.always_ask` và `common_options: [xe_may, o_to, xe_dap]`.
+     - Câu chưa nêu loại xe và ứng viên còn từ 2 loại xe trở lên thì hỏi loại xe trước, không xét `gain`.
+     - Nếu mọi ứng viên cùng mức phạt thì vẫn trả lời luôn, vì hỏi thêm không làm kết quả chính xác hơn (ví dụ "không đội mũ bảo hiểm" cùng 400.000–600.000 đồng cho mọi loại xe).
+     - Loại xe chọn mà câu gốc không có được thêm vào truy vấn ở vòng sau (`QAService._query`) để tìm lại đúng loại xe.
+  3. **Câu hỏi phụ dạng nhóm radio** (`FollowUpForm`). Mọi câu của một lượt gửi cùng lúc bằng nút "Xem mức phạt"; câu chưa chọn tính là "Không rõ". Sau khi gửi, nhóm bị khoá và giữ lựa chọn. Thay chip hồng ở spec 15.3.5.
+  4. **Tô vàng mức phạt.** `prepareAnswer` bọc số tiền "… đồng", "trừ … điểm", "tước GPLX … tháng" thành `<mark class="fine">` nền vàng viền đen. Chip trích dẫn giữ màu xanh dương để phân biệt.
+- **Phương án bị loại:**
+  - Coi mọi câu là hỏi mức phạt: câu hỏi quy định như "xe máy chở mấy người" sẽ mất phần trích quy định.
+  - Chỉ thêm nút "Hành vi này bị phạt bao nhiêu?": người dùng phải bấm thêm một lần.
+  - Hỏi loại xe cả khi cùng mức phạt: thêm một lượt mà không đổi kết quả.
+- **Hệ quả:**
+  - Câu trả lời cho câu hỏi về quy định dài hơn và có thêm trích dẫn.
+  - Mỗi câu hỏi về quy định gọi tìm kiếm hai lần.
+  - Mẫu tô vàng chỉ nhận số tiền có dấu chấm ngăn cách hàng nghìn và kết thúc bằng "đồng".
+- **Kiểm chứng ngày 06/11/2026:**
+  - **Test:** 230/230 pass. Test mới gồm: luôn hỏi loại xe dù `gain` thấp, không hỏi khi đã nêu loại xe hoặc cùng mức phạt, lựa chọn phổ biến đứng đầu, `merge_related` đánh số lại trích dẫn, và API cho câu hỏi về quy định.
+  - **Eval (tập dev, 66 câu):**
+    - Recall@5 giữ 87,9%.
+    - Citation accuracy 80,3% → 83,3%.
+    - Version correctness 90% → 95%.
+    - Dòng đầu đúng mức phạt 76,7% → 80%.
+    - Tỉ lệ trích dẫn đúng trên tổng 22,6% → 21,1%, do có thêm trích dẫn.
+    - Số câu có hỏi lại 11 → 14.
+  - **Trình duyệt:**
+    - "Chở hàng cồng kềnh" ra quy định, hỏi loại xe có lựa chọn Xe máy, chọn xong ra mức phạt xe máy được tô vàng.
+    - "Uống rượu lái xe…" gửi cùng lúc loại xe và nồng độ cồn, ra đúng 8.000.000–10.000.000 đồng và tước GPLX 22–24 tháng.
+    - Ở 1440px và 375px không có thanh cuộn ngang, ô chọn cao ≥ 48px, console không lỗi.
+
+## D-030. Ngưỡng liên quan hai tầng cho câu ngắn (06/11/2026)
+- **Bối cảnh:** "không đội mũ bảo hiểm" trả "Chưa tìm thấy", dù chunk đứng đầu đúng là Điểm h khoản 2 Điều 7 NĐ 168. Cosine của câu là 0,541, dưới `min_similarity` 0,55. Ngưỡng này chọn ở D-021 trên 12 câu đầy đủ; câu ngắn kiểu gõ từ khoá có cosine thấp hơn.
+  - Đo 14 cụm giao thông ngắn: cosine 0,533–0,711, có 4 câu trượt ("không đội mũ bảo hiểm", "nồng độ cồn", "lấn làn", "không bật đèn").
+  - Đo 12 câu lạc đề: cosine ≤ 0,49.
+- **Quyết định:** câu được coi là liên quan khi thoả một trong hai tầng:
+  - cosine ≥ `qa.min_similarity` (0,55), như cũ;
+  - hoặc cosine ≥ `qa.min_similarity_keyword` (0,50) **và** mọi từ của câu (trừ từ dừng, so sau khi bỏ dấu, khớp nguyên từ) có trong chunk đứng đầu (`covers_all_words`).
+  - Áp dụng cho cả lần tìm mức phạt liên quan (D-029).
+- **Phương án bị loại:** hạ ngưỡng xuống 0,52. Đơn giản hơn, nhưng chỉ cách câu lạc đề cao nhất (0,49) 0,03; lần đo ở D-021 từng có câu lạc đề đạt 0,51.
+- **Hệ quả và rủi ro:**
+  - "không bật đèn" vẫn trượt, vì từ "bật" không có trong điều khoản.
+  - Một câu lạc đề vừa đạt cosine 0,50 vừa có mọi từ trong một chunk luật sẽ bị trả lời. Trong mẫu đo chưa gặp: "bóng đá" khớp đủ 2/2 từ nhưng cosine chỉ 0,367.
+  - Mẫu đo nhỏ (26 câu, do Claude chọn); cần đo lại trên bộ câu lạc đề của nhóm (đã nêu ở mục giải pháp trong THUYET_TRINH.md).
+- **Bổ sung: bỏ lặp mức phạt.** Sau khi sửa ngưỡng, "không đội mũ bảo hiểm" trích nguyên văn các điểm của NĐ 168 (đã có sẵn "Phạt tiền từ 400.000 đồng đến 600.000 đồng"), rồi phần "Mức phạt liên quan" lặp lại cùng mức phạt.
+  - Nay câu không có từ hỏi mức phạt mà **đoạn đứng đầu đã có violation** thì đi thẳng luồng mức phạt.
+  - Đoạn đứng đầu là quy định thuần (như Điều 33 Luật 36/2024) thì vẫn trích quy định kèm mức phạt liên quan (D-029).
+  - Nhánh chọn ở vòng đầu được lưu vào `qa_sessions.slots._mode` và giữ nguyên ở các vòng hỏi lại. Lý do: truy vấn vòng sau có thêm tên loại xe nên đoạn đứng đầu có thể đổi, làm mất phần trích quy định giữa chừng.
+  - Thử luồng thật: "không đội mũ bảo hiểm" → mức phạt (6 dòng, không lặp); "nồng độ cồn", "chở hàng cồng kềnh", "đi ngược chiều" → quy định kèm mức phạt liên quan, giữ nguyên sau khi chọn Xe máy.
+  - 237/237 test pass. Eval dev gần như không đổi (trích dẫn đúng / tổng 21,1% → 21,2%).
+- **Kiểm chứng ngày 06/11/2026:**
+  - **Test:** 236/236 pass, gồm test `fold`, `covers_all_words` (gõ không dấu, khớp nguyên từ, câu chỉ có từ dừng) và năm trường hợp của `_ranked`.
+  - **Chạy luồng thật:** 13/14 cụm giao thông ngắn được trả lời (trước là 10/14), 0/12 câu lạc đề bị trả lời.
+  - **Eval dev:** không đổi.
+  - **Trình duyệt:** "không đội mũ bảo hiểm" ra câu trả lời, mức phạt tô vàng, console không lỗi.
+
 ## Câu hỏi mở (cần nhóm quyết định trước milestone liên quan)
 - **Q-1 (M9):** trường `topic` của event: đã áp dụng tạm theo D-021, chờ nhóm xác nhận.
 - **Q-4:** NĐ 336/2025/NĐ-CP sửa NĐ 168/2024/NĐ-CP theo metadata vbpl.vn nhưng không có trong seed, cùng NĐ 319/2026 và Luật 143/2025. Có thêm vào kho không?

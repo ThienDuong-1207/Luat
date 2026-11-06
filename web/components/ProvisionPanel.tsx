@@ -1,8 +1,8 @@
 "use client";
 
 import { diffWords } from "diff";
-import { ExternalLink } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ExternalLink, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/Panel";
@@ -117,22 +117,14 @@ function Detail({ data }: { data: ProvisionDetail }) {
   );
 }
 
-export function ProvisionPanel({
-  provisionKey,
-  title,
-  asOf,
-  onClose,
-}: {
-  provisionKey: string;
-  title: string;
-  asOf: string;
-  onClose: () => void;
-}) {
+function useProvision(provisionKey: string, asOf: string) {
   const [data, setData] = useState<ProvisionDetail | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let stale = false;
+    setData(null);
+    setFailed(false);
     getProvision(provisionKey, asOf)
       .then((d) => !stale && setData(d))
       .catch(() => !stale && setFailed(true));
@@ -140,12 +132,52 @@ export function ProvisionPanel({
       stale = true;
     };
   }, [provisionKey, asOf]);
+  return { data, failed };
+}
 
+function Body({ data, failed }: { data: ProvisionDetail | null; failed: boolean }) {
   return (
-    <Panel title={data?.label ?? title} onClose={onClose}>
+    <>
       {failed ? <p role="alert">Không tải được nội dung điều khoản. Hãy thử lại.</p> : null}
       {!failed && !data ? <p role="status" className="text-muted">Đang tải nguyên văn…</p> : null}
       {data ? <Detail data={data} /> : null}
+    </>
+  );
+}
+
+type Props = { provisionKey: string; title: string; asOf: string; onClose: () => void };
+
+/** Panel bật lên (modal): dùng trên màn hẹp và ở trang văn bản. */
+export function ProvisionPanel({ provisionKey, title, asOf, onClose }: Props) {
+  const { data, failed } = useProvision(provisionKey, asOf);
+  return (
+    <Panel title={data?.label ?? title} onClose={onClose}>
+      <Body data={data} failed={failed} />
     </Panel>
+  );
+}
+
+/** Nội dung cột tham chiếu cố định bên phải trang hỏi đáp (màn ≥ 1280px). */
+export function ProvisionAside({ provisionKey, title, asOf, onClose }: Props) {
+  const { data, failed } = useProvision(provisionKey, asOf);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  // Bấm chip khác thì đưa focus sang cột tham chiếu, người dùng bàn phím biết nội dung đã đổi
+  useEffect(() => headingRef.current?.focus(), [provisionKey, asOf]);
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between gap-2 border-b-3 border-ink bg-yellow p-4">
+        <h2 ref={headingRef} tabIndex={-1} className="font-extrabold leading-tight outline-none">
+          {data?.label ?? title}
+        </h2>
+        <Button variant="secondary" aria-label="Đóng tham chiếu" onClick={onClose} className="shrink-0 px-0 shadow-brutal-sm">
+          <X size={20} aria-hidden />
+        </Button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4">
+        <Body data={data} failed={failed} />
+      </div>
+    </div>
   );
 }

@@ -14,6 +14,7 @@ from luatgt.common.config import load_settings
 from luatgt.jobs.build_index import build_chunks, load_chunks
 from luatgt.modeling.versions import OPEN_END
 from luatgt.qa.answer import (
+    AskResponse,
     Citation,
     Fact,
     check_answer,
@@ -31,7 +32,16 @@ from luatgt.qa.followup import (
     load_followup_config,
 )
 from luatgt.qa.llm_client import LLMError, make_llm_client
-from luatgt.qa.service import citation_label, doc_label
+from luatgt.qa.service import (
+    RELATED_HEADING,
+    QAService,
+    citation_label,
+    covers_all_words,
+    doc_label,
+    fold,
+    merge_related,
+)
+from luatgt.retrieval.search import SearchHit
 from tests.helpers import ROOT
 from tests.test_retrieval import FakeEmbedder
 
@@ -112,6 +122,82 @@ def test_questions_use_config_labels_and_unknown_option():
     assert vehicle["question"] == "Bạn điều khiển loại phương tiện nào?"
     assert {"value": "xe_may", "label": "Xe máy"} in vehicle["options"]
     assert vehicle["options"][-1]["value"] == UNKNOWN
+
+
+def test_always_asks_vehicle_when_fines_differ_by_vehicle_even_with_low_gain():
+    """D-029: câu không nêu loại xe, mức phạt khác theo loại xe → hỏi loại xe dù entropy thấp."""
+    rows = [_c("A/D7/K1/Pa", ("xe_may",), score=10.0), _c("A/D6/K1/Pa", ("o_to",), 3_000_000, 4_000_000, score=0.1)]
+    assert gain(rows, "phuong_tien") < CFG.gain_threshold
+    d = decide(rows, {}, 0, CFG)
+    assert d.status == "need_clarification" and d.dimensions[0] == "phuong_tien"
+    old = type(CFG)(CFG.max_rounds, CFG.max_questions_per_round, CFG.gain_threshold,
+                    {**CFG.dimensions, "phuong_tien": {**CFG.dimensions["phuong_tien"], "always_ask": False}})
+    assert decide(rows, {}, 0, old).status == "answered"
+
+
+def test_vehicle_not_asked_when_named_or_fine_is_the_same():
+    rows = [_c("A/D7/K1/Pa", ("xe_may",)), _c("A/D6/K1/Pa", ("o_to",), 3_000_000, 4_000_000)]
+    assert decide(rows, {"phuong_tien": ["xe_may"]}, 0, CFG).status == "answered"
+    same = [_c("A/D7/K1/Pa", ("xe_may",)), _c("A/D8/K1/Pa", ("xe_dap",))]
+    assert decide(same, {}, 0, CFG).status == "answered"
+
+
+def test_vehicle_question_always_offers_common_vehicles_first():
+    vehicle = next(x for x in build_questions(decide(ALCOHOL, {}, 0, CFG), CFG) if x["dimension"] == "phuong_tien")
+    values = [o["value"] for o in vehicle["options"]]
+    assert values[:3] == ["xe_may", "o_to", "xe_dap"] and values[-1] == UNKNOWN
+    assert len(values) == len(set(values))
+
+
+def test_merge_related_renumbers_citations_and_keeps_one_basis():
+    cit = lambda i, key: Citation(id=f"c{i}", provision_key=key, version_no=1, label=key, valid_from=date(2025, 1, 1))
+    provisions = AskResponse(status="answered", as_of_date=AS_OF, disclaimer="d",
+                             answer_markdown="Quy định:\n- Cấm X [c1]\n- Cấm Y [c2]\n\nCăn cứ: [c1] L1; [c2] L2.",
+                             citations=[cit(1, "L/D33/K1"), cit(2, "L/D33/K2")])
+    fact = make_fact(_vio(key="N/D7/K3/Pe"), "c1")
+    related = AskResponse(status="answered", as_of_date=AS_OF, disclaimer="d", facts=[fact],
+                          answer_markdown="Theo quy định:\n- Phạt X [c1]\n\nCăn cứ: [c1] N.",
+                          citations=[cit(1, "N/D7/K3/Pe")], related_questions=["q?"])
+    merged = merge_related(provisions, related)
+    assert [c.id for c in merged.citations] == ["c1", "c2", "c3"]
+    assert merged.citations[2].provision_key == "N/D7/K3/Pe" and merged.facts[0].citation_ids == ["c3"]
+    assert "- Phạt X [c3]" in merged.answer_markdown and RELATED_HEADING in merged.answer_markdown
+    assert merged.answer_markdown.count("Căn cứ:") == 1 and merged.answer_markdown.rstrip().endswith("[c3] N/D7/K3/Pe.")
+    assert merged.related_questions == ["q?"]
+    assert merge_related(provisions, None) is provisions
+
+
+def _hit(text_: str, similarity: float, key: str = "N/D7/K2/Ph") -> SearchHit:
+    return SearchHit(chunk_id=key, provision_key=key, version_no=1, so_hieu="168/2024/NĐ-CP",
+                     hierarchy_path="NĐ 168 > Điều 7 > Khoản 2 > Điểm h", display_text=text_,
+                     valid_from=date(2025, 1, 1), valid_to=date(9999, 12, 31), score=1.0, similarity=similarity)
+
+
+HELMET = "Không đội “mũ bảo hiểm cho người đi mô tô, xe máy” khi tham gia giao thông"
+
+
+def test_fold_and_word_coverage():
+    assert fold("Đội MŨ bảo hiểm") == "doi mu bao hiem"
+    stop = ["bị", "phạt"]
+    assert covers_all_words("không đội mũ bảo hiểm", _hit(HELMET, 0.5), stop)
+    assert covers_all_words("KHONG DOI MU BAO HIEM", _hit(HELMET, 0.5), stop)   # gõ không dấu
+    assert not covers_all_words("không bật đèn", _hit(HELMET, 0.5), stop)
+    assert not covers_all_words("mũ", _hit("mũi tên chỉ hướng", 0.5), stop)       # khớp nguyên từ, không khớp chuỗi con
+    assert not covers_all_words("bị phạt", _hit(HELMET, 0.5), stop)               # chỉ có từ dừng
+
+
+@pytest.mark.parametrize("query, similarity, relevant", [
+    ("không đội mũ bảo hiểm", 0.56, True),    # tầng một
+    ("không đội mũ bảo hiểm", 0.541, True),   # tầng hai: dưới 0,55 nhưng khớp đủ từ (D-030)
+    ("không đội mũ bảo hiểm", 0.49, False),   # dưới mức sàn
+    ("bóng đá", 0.53, False),                 # đủ điểm sàn nhưng không khớp từ
+    ("thời tiết hôm nay", 0.49, False),
+])
+def test_two_tier_relevance(settings, query, similarity, relevant):
+    service = object.__new__(QAService)
+    service.settings = settings
+    ranked = service._ranked([_hit(HELMET, similarity)], query)
+    assert (ranked is not None) is relevant
 
 
 def _fact():
@@ -231,6 +317,46 @@ def test_api_clarify_then_answer_flow(client):
     assert second["citations"][0]["id"] in fact["citation_ids"]
     assert second["citations"][0]["source_url"] == "https://vbpl.vn/x"
     assert second["disclaimer"] and second["as_of_date"] == "2026-10-20"
+
+
+@pytest.mark.integration
+def test_api_question_without_penalty_word_on_penalty_provision_goes_straight_to_fines(client):
+    """D-030: đoạn đứng đầu đã là điều khoản xử phạt → luồng mức phạt luôn, không trích rồi lặp lại mức phạt."""
+    first = client.post("/api/ask", json={"question": "uống rượu lái xe", "as_of_date": "2026-10-20"}).json()
+    assert first["status"] == "need_clarification" and RELATED_HEADING not in first["answer_markdown"]
+    assert first["follow_up_questions"][0]["dimension"] == "phuong_tien"
+    second = client.post("/api/ask", json={"session_id": first["session_id"],
+                                           "selected": {"phuong_tien": "xe_may", "nong_do_con": "tren_80mg"}}).json()
+    assert second["status"] == "answered" and RELATED_HEADING not in second["answer_markdown"]
+    assert [(f["muc_phat_min"], f["muc_phat_max"]) for f in second["facts"]] == [(8_000_000, 10_000_000)]
+
+
+@pytest.mark.integration
+def test_api_rule_question_quotes_rule_then_related_fines(client, ctx):
+    """D-029: đoạn đứng đầu là quy định thuần (không có mức phạt) → trích quy định, rồi kèm mức phạt liên quan.
+    Nhánh đã chọn ở vòng đầu được giữ ở vòng sau, kể cả khi truy vấn có thêm tên loại xe."""
+    engine = ctx[1]
+    client.settings.qa.min_similarity = 0.25   # FakeEmbedder: đoạn xử phạt chỉ đạt 0,276 với câu này
+    rule = "uống rượu lái xe là hành vi bị nghiêm cấm"
+    with engine.begin() as conn:
+        conn.execute(text("""INSERT INTO provision_versions (provision_key, version_no, text, source_vbpl_id,
+                             valid_from, valid_to, is_current) VALUES (:k, 1, :t, '1', :s, :e, true)"""),
+                     {"k": f"{K}/D9/K2", "t": rule, "s": START, "e": OPEN_END})
+        versions = [dict(r) for r in conn.execute(text(
+            "SELECT provision_key, version_no, text, valid_from, valid_to FROM provision_versions")).mappings()]
+    docs = [{"vbpl_id": "1", "so_hieu": "1/2024/NĐ-CP", "ten_van_ban": "Nghị định 1"}]
+    load_chunks(engine, build_chunks(docs, [], versions, set()), FakeEmbedder())   # load_chunks thay toàn bộ chỉ mục
+    first = client.post("/api/ask", json={"question": rule, "as_of_date": "2026-10-20"}).json()
+    assert first["citations"][0]["provision_key"] == f"{K}/D9/K2"
+    assert first["answer_markdown"].startswith("Quy định áp dụng") and RELATED_HEADING in first["answer_markdown"]
+    assert first["status"] == "need_clarification" and first["follow_up_questions"][0]["dimension"] == "phuong_tien"
+    second = client.post("/api/ask", json={"session_id": first["session_id"],
+                                           "selected": {"phuong_tien": "xe_may", "nong_do_con": "tren_80mg"}}).json()
+    assert second["status"] == "answered" and second["answer_markdown"].startswith("Quy định áp dụng")
+    assert {f["phuong_tien"][0] for f in second["facts"]} == {"xe_may"}
+    ids = {c["id"] for c in second["citations"]}
+    assert all(i in ids for f in second["facts"] for i in f["citation_ids"])
+    assert second["answer_markdown"].count("Căn cứ:") == 1
 
 
 @pytest.mark.integration

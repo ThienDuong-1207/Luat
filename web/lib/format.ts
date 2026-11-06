@@ -54,11 +54,24 @@ export function citationChipLabel(c: Pick<Citation, "provision_key" | "label">):
 }
 
 /** `[c1]` thành link để renderer đổi thành chip; dòng "Căn cứ:" đã có hàng chip riêng. */
+export const FINE_HREF = "#muc-phat";
+// Số tiền ("400.000–600.000 đồng", "từ 400.000 đồng đến 600.000 đồng"), trừ điểm, tước GPLX: tô vàng (D-029)
+const RE_FINE = new RegExp(
+  [
+    String.raw`(?:từ\s+)?\d{1,3}(?:\.\d{3})+(?:\s*đồng)?\s*(?:–|-|đến)\s*\d{1,3}(?:\.\d{3})+\s*đồng`,
+    String.raw`\d{1,3}(?:\.\d{3})+\s*đồng`,
+    String.raw`trừ\s+\d+\s+điểm(?:\s+GPLX|\s+giấy phép lái xe)?`,
+    String.raw`tước\s+(?:quyền sử dụng\s+)?(?:GPLX|giấy phép lái xe)\s+(?:từ\s+)?\d+\s*(?:–|-|đến)\s*\d+\s+tháng`,
+  ].join("|"),
+  "gi",
+);
+
 export function prepareAnswer(markdown: string): string {
   return markdown
     .split("\n")
     .filter((line) => !line.startsWith("Căn cứ:"))
     .join("\n")
+    .replace(RE_FINE, (m) => `[${m}](${FINE_HREF})`)
     .replace(/\[(c\d+)\]/g, "[$1](#$1)")
     .trim();
 }

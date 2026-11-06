@@ -82,6 +82,19 @@
     list-style: disc;
     padding-left: 1.25rem;
   }
+  /* Mức phạt trong câu trả lời: khối vàng viền đen, cùng phong cách chip trích dẫn nhưng khác màu (D-029) */
+  mark.fine {
+    background: var(--yellow);
+    color: var(--ink);
+    border: var(--border-thin);
+    border-radius: var(--radius);
+    padding: 0 0.3em;
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-weight: 800;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
   .legal li + li,
   .legal p + p,
   .legal p + ul {

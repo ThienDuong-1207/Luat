@@ -90,6 +90,10 @@ def gain(candidates: list[Candidate], dim: str) -> float:
     return entropy * spread
 
 
+def vehicles(candidates: list[Candidate]) -> set[str]:
+    return {v for c in candidates for v in _values(c.violation, "phuong_tien")}
+
+
 def decide(candidates: list[Candidate], slots: dict, rounds: int, cfg: FollowupConfig) -> Decision:
     remaining = filter_candidates(candidates, slots)
     if not remaining:
@@ -101,7 +105,13 @@ def decide(candidates: list[Candidate], slots: dict, rounds: int, cfg: FollowupC
     # Thứ tự cố định theo config để hoà điểm vẫn tất định
     dims = [d for d in cfg.dimensions if d != "thoi_diem" and d not in slots]
     scored = sorted(((gain(remaining, d), d) for d in dims), key=lambda x: -x[0])
-    chosen = [d for g, d in scored if g > cfg.gain_threshold][: cfg.max_questions_per_round]
+    chosen = [d for g, d in scored if g > cfg.gain_threshold]
+    # Câu không nêu loại xe mà mức phạt khác nhau theo loại xe: luôn hỏi loại xe trước (D-029),
+    # không chờ entropy đủ lớn; trả lời gộp nhiều loại xe dễ khiến người dùng đọc nhầm mức của xe khác.
+    if (cfg.dimensions.get("phuong_tien", {}).get("always_ask") and "phuong_tien" in dims
+            and len(vehicles(remaining)) >= 2):
+        chosen = ["phuong_tien", *[d for d in chosen if d != "phuong_tien"]]
+    chosen = chosen[: cfg.max_questions_per_round]
     if not chosen:
         return Decision("answered", remaining, exhausted=True)
     return Decision("need_clarification", remaining, chosen)
@@ -111,7 +121,9 @@ def build_questions(decision: Decision, cfg: FollowupConfig) -> list[dict]:
     out = []
     for dim in decision.dimensions:
         seen = dict.fromkeys(v for c in decision.candidates for v in _values(c.violation, dim))
-        options = [{"value": v, "label": cfg.label(dim, v)} for v in seen]
+        # Loại xe phổ biến luôn có mặt, kể cả khi chưa có trong ứng viên: chọn vào sẽ tìm lại theo loại xe đó
+        common = cfg.dimensions[dim].get("common_options", [])
+        options = [{"value": v, "label": cfg.label(dim, v)} for v in dict.fromkeys([*common, *seen])]
         options.append({"value": UNKNOWN, "label": "Không rõ / bỏ qua"})
         out.append({"dimension": dim, "question": cfg.dimensions[dim]["question"], "options": options})
     return out

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 import uuid
 from dataclasses import dataclass
 from datetime import date
@@ -12,6 +13,7 @@ from sqlalchemy import Engine, text
 
 from luatgt.common.config import Settings
 from luatgt.qa.answer import (
+    RE_CITE,
     AskResponse,
     Citation,
     dedupe,
@@ -21,6 +23,7 @@ from luatgt.qa.answer import (
     template_answer,
 )
 from luatgt.qa.followup import (
+    UNKNOWN,
     Candidate,
     Decision,
     FollowupConfig,
@@ -35,6 +38,8 @@ from luatgt.retrieval.query import parse_question, today_vn
 from luatgt.retrieval.search import SearchHit, hybrid_search
 
 RE_PENALTY_INTENT = re.compile(r"phạt|xử lý|xử phạt|mức|tước|trừ điểm|bị gì|có sao không", re.IGNORECASE)
+RE_BASIS = re.compile(r"^Căn cứ:.*$", re.MULTILINE)
+RELATED_HEADING = "**Mức phạt liên quan:**"
 NOT_FOUND = ("Chưa tìm thấy quy định phù hợp trong các văn bản hiện có. "
              "Bạn thử mô tả rõ hành vi, loại xe hoặc chọn một chủ đề khác.")
 
@@ -46,6 +51,7 @@ class Session:
     as_of: date
     slots: dict
     rounds: int
+    mode: str | None = None  # "penalty" | "rule": chọn ở vòng đầu, giữ nguyên khi hỏi lại (D-030)
 
 
 class QAService:
@@ -57,27 +63,69 @@ class QAService:
     def ask(self, question: str, session_id: str | None = None, as_of: date | None = None,
             selected: dict | None = None) -> AskResponse:
         session = self._session(question, session_id, as_of, selected or {})
-        hits = hybrid_search(self.engine, self.embedder, session.question, session.as_of, self.settings.retrieval)
-        best = max((h.similarity or 0.0 for h in hits), default=0.0)
-        if best < self.settings.qa.min_similarity:
+        query = self._query(session)
+        hits = hybrid_search(self.engine, self.embedder, query, session.as_of, self.settings.retrieval)
+        ranked = self._ranked(hits, query)
+        if ranked is None:
             return self._save(session, self._not_found(session))
-
-        cutoff = best - self.settings.qa.similarity_margin
-        ranked = [h for h in hits[: self.settings.qa.candidate_chunks] if (h.similarity or 0.0) >= cutoff]
         candidates = [Candidate(v, h.score) for h in ranked for v in h.violations]
-        if not RE_PENALTY_INTENT.search(session.question):
-            return self._save(session, self._provisions(session, ranked[:3] or hits[:3]))
-        decision = decide(candidates, session.slots, session.rounds, self.followup)
+        if session.mode is None:
+            # Câu không có từ hỏi mức phạt nhưng đoạn đứng đầu đã là điều khoản xử phạt ("không đội mũ bảo hiểm"):
+            # đi luồng mức phạt luôn, tránh trích nguyên văn rồi lặp lại cùng mức phạt bên dưới (D-030)
+            penalty = RE_PENALTY_INTENT.search(session.question) or bool(ranked and ranked[0].violations)
+            session.mode = "penalty" if penalty else "rule"
+        if session.mode == "penalty":
+            return self._save(session, self._penalties(session, candidates, ranked) or self._not_found(session))
+        # Câu hỏi về quy định: trích nguyên văn, rồi kèm mức phạt liên quan nếu tìm được (D-029)
+        provisions = self._provisions(session, ranked[:3] or hits[:3])
+        return self._save(session, merge_related(provisions, self._related_penalties(session, query)))
+
+    def _query(self, s: Session) -> str:
+        """Loại xe người dùng chọn ở câu hỏi phụ mà câu gốc không có: thêm vào truy vấn để tìm lại đúng loại xe."""
+        chosen = s.slots.get("phuong_tien")
+        if not chosen or parse_question(s.question).slots.get("phuong_tien"):
+            return s.question
+        values = chosen if isinstance(chosen, list) else [chosen]
+        labels = [self.followup.label("phuong_tien", v) for v in values if v != UNKNOWN]
+        return " ".join([s.question, *labels])
+
+    def _ranked(self, hits: list[SearchHit], query: str) -> list[SearchHit] | None:
+        """Chunk đủ gần chunk tốt nhất. None nếu không đủ liên quan.
+
+        Hai tầng (D-030): cosine ≥ `min_similarity`, hoặc cosine ≥ `min_similarity_keyword` và mọi từ của câu
+        (trừ từ dừng) có trong chunk đứng đầu. Câu ngắn như "không đội mũ bảo hiểm" có cosine thấp hơn câu đầy đủ.
+        """
+        best = max((h.similarity or 0.0 for h in hits), default=0.0)
+        qa = self.settings.qa
+        relevant = best >= qa.min_similarity or (
+            best >= qa.min_similarity_keyword
+            and covers_all_words(query, hits[0], self.settings.retrieval.stopwords))
+        if not relevant:
+            return None
+        cutoff = best - self.settings.qa.similarity_margin
+        return [h for h in hits[: self.settings.qa.candidate_chunks] if (h.similarity or 0.0) >= cutoff]
+
+    def _penalties(self, s: Session, candidates: list[Candidate], ranked: list[SearchHit]) -> AskResponse | None:
+        """Luồng mức phạt: hỏi lại hoặc trả lời. None nếu không còn ứng viên."""
+        decision = decide(candidates, s.slots, s.rounds, self.followup)
         if decision.status == "not_found":
-            return self._save(session, self._not_found(session))
+            return None
         if decision.status == "need_clarification":
-            response = AskResponse(
-                status="need_clarification", as_of_date=session.as_of, disclaimer=self.settings.qa.disclaimer,
+            return AskResponse(
+                status="need_clarification", as_of_date=s.as_of, disclaimer=self.settings.qa.disclaimer,
                 answer_markdown="Mức phạt khác nhau tuỳ trường hợp, bạn cho biết thêm:",
                 follow_up_questions=build_questions(decision, self.followup),
             )
-            return self._save(session, response)
-        return self._save(session, self._answered(session, decision, ranked))
+        return self._answered(s, decision, ranked)
+
+    def _related_penalties(self, s: Session, query: str) -> AskResponse | None:
+        """Tìm lại chỉ trong điều khoản có mức phạt. None nếu không có gì đủ liên quan."""
+        hits = hybrid_search(self.engine, self.embedder, query, s.as_of, self.settings.retrieval,
+                             penalties_only=True)
+        ranked = self._ranked(hits, query)
+        if not ranked:
+            return None
+        return self._penalties(s, [Candidate(v, h.score) for h in ranked for v in h.violations], ranked)
 
     def _session(self, question: str, session_id: str | None, as_of: date | None, selected: dict) -> Session:
         if session_id:
@@ -88,7 +136,8 @@ class QAService:
                 raise KeyError(session_id)
             slots = dict(row["slots"])
             rounds = slots.pop("_rounds", 0) + 1
-            return Session(session_id, row["question"], as_of or row["as_of_date"], {**slots, **selected}, rounds)
+            mode = slots.pop("_mode", None)
+            return Session(session_id, row["question"], as_of or row["as_of_date"], {**slots, **selected}, rounds, mode)
         parsed = parse_question(question, today_vn())
         return Session(str(uuid.uuid4()), question, as_of or parsed.as_of, {**parsed.slots, **selected}, 0)
 
@@ -101,7 +150,7 @@ class QAService:
                 ON CONFLICT (session_id) DO UPDATE SET as_of_date = EXCLUDED.as_of_date, slots = EXCLUDED.slots,
                     status = EXCLUDED.status, answer = EXCLUDED.answer"""),
                 {"i": s.session_id, "q": s.question, "d": s.as_of, "st": response.status,
-                 "s": json.dumps({**s.slots, "_rounds": s.rounds}, ensure_ascii=False),
+                 "s": json.dumps({**s.slots, "_rounds": s.rounds, "_mode": s.mode}, ensure_ascii=False),
                  "a": response.model_dump_json()})
         return response
 
@@ -175,6 +224,41 @@ class QAService:
                   AND :as_of >= valid_from AND :as_of < valid_to
                 ORDER BY md5(provision_key) LIMIT 20"""), {"d": dieu, "as_of": as_of}).mappings()]
         return related_questions(rows, {k for k, _ in keys}, self.followup)
+
+
+def merge_related(provisions: AskResponse, related: AskResponse | None) -> AskResponse:
+    """Ghép trích dẫn quy định với mức phạt liên quan thành một câu trả lời; đánh số lại trích dẫn của phần sau.
+
+    Mức phạt cần hỏi lại thì giữ phần quy định ở trên và hỏi tiếp bên dưới.
+    """
+    if related is None:
+        return provisions
+    offset = len(provisions.citations)
+    rename = {c.id: f"c{offset + i}" for i, c in enumerate(related.citations, 1)}
+    body = RE_CITE.sub(lambda m: f"[{rename.get(m.group(1), m.group(1))}]", strip_basis(related.answer_markdown))
+    citations = provisions.citations + [c.model_copy(update={"id": rename[c.id]}) for c in related.citations]
+    facts = [f.model_copy(update={"citation_ids": [rename[i] for i in f.citation_ids]}) for f in related.facts]
+    basis = "Căn cứ: " + "; ".join(f"[{c.id}] {c.label}" for c in citations) + "."
+    answer = "\n\n".join([strip_basis(provisions.answer_markdown), RELATED_HEADING, body, basis])
+    return related.model_copy(update={"answer_markdown": answer, "citations": citations, "facts": facts})
+
+
+def fold(text_: str) -> str:
+    """Chữ thường, bỏ dấu tiếng Việt (đ → d), để so từ không phụ thuộc cách gõ dấu."""
+    decomposed = unicodedata.normalize("NFD", text_.lower().replace("đ", "d"))
+    return "".join(ch for ch in decomposed if unicodedata.category(ch) != "Mn")
+
+
+def covers_all_words(query: str, hit: SearchHit, stopwords: list[str]) -> bool:
+    """Mọi từ của câu (trừ từ dừng) xuất hiện nguyên từ trong chunk. Câu chỉ có từ dừng thì False."""
+    stop = {fold(w) for w in stopwords}
+    words = [w for w in re.findall(r"\w+", fold(query)) if w not in stop]
+    body = set(re.findall(r"\w+", fold(f"{hit.hierarchy_path} {hit.display_text}")))
+    return bool(words) and all(w in body for w in words)
+
+
+def strip_basis(markdown: str) -> str:
+    return RE_BASIS.sub("", markdown).strip()
 
 
 def doc_label(so_hieu: str) -> str:

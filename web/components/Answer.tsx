@@ -5,18 +5,19 @@ import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Chip, CitationChip } from "@/components/ui/Chip";
+import { CitationChip } from "@/components/ui/Chip";
+import { FollowUpForm, type Selection } from "@/components/FollowUpForm";
 import { Disclaimer } from "@/components/ui/Disclaimer";
 import { Table, type Column } from "@/components/ui/Table";
 import { postJson, type AskResponse, type Citation, type Fact } from "@/lib/api";
-import { citationChipLabel, fineRange, formatDate, prepareAnswer, vehicleLabels } from "@/lib/format";
+import { citationChipLabel, FINE_HREF, fineRange, formatDate, prepareAnswer, vehicleLabels } from "@/lib/format";
 
 const COLUMNS: Column<Fact>[] = [
   { header: "Hành vi", cell: (f) => f.hanh_vi },
-  { header: "Phương tiện", cell: (f) => vehicleLabels(f.phuong_tien) },
-  { header: "Mức phạt", cell: fineRange, numeric: true },
-  { header: "Trừ điểm", cell: (f) => f.tru_diem_gplx ?? "—", numeric: true },
-  { header: "Tước GPLX", cell: (f) => f.tuoc_gplx ?? "—", numeric: true },
+  { header: "Phương tiện", cell: (f) => vehicleLabels(f.phuong_tien), nowrap: true },
+  { header: "Mức phạt", cell: fineRange, numeric: true, nowrap: true },
+  { header: "Trừ điểm", cell: (f) => f.tru_diem_gplx ?? "—", numeric: true, nowrap: true },
+  { header: "Tước GPLX", cell: (f) => f.tuoc_gplx ?? "—", numeric: true, nowrap: true },
 ];
 
 function Feedback({ sessionId }: { sessionId: string }) {
@@ -60,8 +61,8 @@ export function Answer({
 }: {
   res: AskResponse;
   active: boolean;
-  chosen?: string;
-  onSelect: (dimension: string, option: { value: string; label: string }) => void;
+  chosen?: Selection;
+  onSelect: (selection: Selection) => void;
   onAsk: (question: string) => void;
   onCite: (c: Citation) => void;
 }) {
@@ -76,6 +77,7 @@ export function Answer({
           <ReactMarkdown
             components={{
               a({ href, children }) {
+                if (href === FINE_HREF) return <mark className="fine">{children}</mark>;
                 const citation = href?.startsWith("#") ? byId.get(href.slice(1)) : undefined;
                 if (!citation) return <span>{children}</span>;
                 return (
@@ -114,24 +116,9 @@ export function Answer({
         </div>
       </Card>
 
-      {res.follow_up_questions.map((q) => (
-        <section key={q.dimension}>
-          <h3 className="label mb-2">{q.question}</h3>
-          <div role="group" aria-label={q.question} className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-            {q.options.map((o) => (
-              <Chip
-                key={o.value}
-                neutral={o.value === "__khong_ro__"}
-                disabled={!active}
-                className={chosen === `${q.dimension}:${o.value}` ? "bg-ink text-surface" : "disabled:opacity-60"}
-                onClick={() => onSelect(q.dimension, o)}
-              >
-                {o.label}
-              </Chip>
-            ))}
-          </div>
-        </section>
-      ))}
+      {res.follow_up_questions.length > 0 ? (
+        <FollowUpForm questions={res.follow_up_questions} active={active} submitted={chosen} onSubmit={onSelect} />
+      ) : null}
 
       {res.related_questions.length > 0 ? (
         <section>

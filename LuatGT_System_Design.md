@@ -744,12 +744,21 @@ Input: question, as_of_date, slots đã có (từ câu hỏi + các lựa chọn
      - gain(d)   = entropy có trọng số của d trên C
                    × (chênh lệch mức phạt tối đa giữa các nhóm giá trị của d / mức phạt lớn nhất)
    Chọn tối đa 2 chiều có gain cao nhất (gain > ngưỡng cấu hình).
-8. Sinh câu hỏi cho từng chiều: tiêu đề lấy từ config, options = values(d) đã gắn nhãn tiếng Việt + "Không rõ / bỏ qua"
+   Riêng phuong_tien (D-029): nếu câu chưa nêu loại xe và C có từ 2 loại xe trở lên thì luôn hỏi phuong_tien
+   trước, không xét gain (bật bằng `always_ask` trong config).
+8. Sinh câu hỏi cho từng chiều: tiêu đề lấy từ config, options = values(d) đã gắn nhãn tiếng Việt + "Không rõ / bỏ qua".
+   Với phuong_tien, luôn có thêm các loại phổ biến (`common_options`: xe máy, ô tô, xe đạp) ở đầu danh sách.
+   Người dùng chọn một loại xe mà câu gốc không có → thêm tên loại xe vào truy vấn ở vòng sau để tìm lại.
 9. status = need_clarification
 10. Giới hạn tối đa 3 vòng hỏi; quá 3 vòng → trả lời dạng bảng các trường hợp còn lại.
 ```
 - Chiều `thoi_diem` chỉ được hỏi khi C chứa violations thuộc **nhiều version khác nhau** của cùng điều khoản (tức là có sửa đổi làm thay đổi kết quả quanh khoảng thời gian liên quan). Option: "Trước {effective_date}" / "Từ {effective_date}".
 - "Không rõ" → không lọc theo chiều đó; khi trả lời, liệt kê các trường hợp.
+- **Ngưỡng liên quan hai tầng** (D-030): câu được coi là liên quan khi cosine của chunk tốt nhất ≥ `min_similarity`, hoặc ≥ `min_similarity_keyword` và mọi từ của câu (trừ từ dừng) có trong chunk đứng đầu. Không đạt cả hai tầng → `not_found`.
+- **Câu không có từ hỏi mức phạt** (như "phạt", "mức", "xử lý"):
+  - Nếu đoạn đứng đầu đã là điều khoản xử phạt (có violation), đi thẳng luồng mức phạt, không trích rồi lặp lại (D-030).
+  - Nếu đoạn đứng đầu là **quy định thuần**: trích nguyên văn quy định, rồi tìm lại chỉ trong các điều khoản có violation và chạy các bước 3–10 ở trên. Kết quả hiện dưới tiêu đề "Mức phạt liên quan" trong cùng câu trả lời; không tìm được gì đủ liên quan thì chỉ trích quy định (D-029).
+  - Nhánh chọn ở vòng đầu giữ nguyên khi hỏi lại.
 
 ### 10.3. Câu hỏi liên quan (hiển thị dưới câu trả lời)
 - 2 câu từ các violations **cùng Điều** (anh em) với câu trả lời.
@@ -992,7 +1001,8 @@ Vì đây là trang tra cứu luật, áp dụng quy tắc **"khung brutal, nộ
 | **Button chính** | Nền `--yellow`, `--border`, `--shadow`, chữ 800. Hover: dịch `translate(-2px,-2px)`, bóng 7px. Active/pressed: dịch `translate(5px,5px)`, bóng về 0 (cảm giác "nhấn xuống"). |
 | **Button phụ** | Nền `--surface`, cùng viền và bóng. |
 | **Ô nhập câu hỏi** | Cao 56–64px, `--border`, `--shadow`, nền trắng, placeholder `--muted`. Focus: viền giữ đen, thêm outline `3px solid var(--blue)` lệch 3px. Nút gửi gắn liền bên phải. |
-| **Chip câu hỏi phụ** | Nền `--pink`, `--border-thin`, `--shadow-sm`, chữ 700. Đã chọn: nền `--ink`, chữ trắng. Chip "Không rõ" nền `--surface`. Trên mobile xếp thành hàng cuộn ngang hoặc lưới 2 cột. |
+| **Câu hỏi phụ (nhóm radio)** | Mỗi câu hỏi là một `<fieldset>` có `<legend>`; mỗi lựa chọn là ô `--border` cao ≥ 44px chứa radio thật. Ô đang chọn nền `--yellow`; "Không rõ" nền `--paper`. Mọi câu của một lượt gửi cùng lúc bằng nút **Xem mức phạt**; câu chưa chọn tính là "Không rõ". Sau khi gửi, nhóm bị khoá và giữ lựa chọn đã chọn. Lưới 2 cột trên mobile, 3 cột tablet, 4 cột desktop (D-029). |
+| **Mức phạt trong câu trả lời** | Số tiền "… đồng", "trừ … điểm GPLX", "tước GPLX … tháng" là khối `<mark>` nền `--yellow`, `--border-thin`, font mono 800. Nguyên văn điều luật ở panel/cột tham chiếu không tô (D-029). |
 | **Chip trích dẫn** | Nền `--blue`, font mono, ví dụ `[Đ.18 K.4 a) NĐ 168/2024]`; bấm mở panel nguyên văn. |
 | **Khối câu trả lời** | Thẻ `--surface`, `--border`, `--shadow`; tiêu đề nhỏ dạng nhãn ("TRẢ LỜI"), nội dung chữ thường. Thanh màu vàng dày 8px ở cạnh trái. |
 | **Bảng mức phạt (facts)** | Viền ngoài `--border`, đường kẻ trong `--border-thin`, header nền `--yellow`, số tiền font mono căn phải. Trên mobile chuyển thành danh sách thẻ. |
@@ -1027,7 +1037,11 @@ Vì đây là trang tra cứu luật, áp dụng quy tắc **"khung brutal, nộ
                                          panel nguyên văn trượt từ phải →
 ```
 - Màn hình trống ban đầu: tiêu đề lớn + 4–6 thẻ câu hỏi mẫu (mỗi thẻ một màu khối) để người dùng bấm thử.
-- Chiều rộng cột chat tối đa 760px, căn giữa.
+- **Màn ≥ 1280px:** chia hai cột theo chiều rộng màn hình (D-028).
+  - 80% cho hỏi đáp và ô nhập.
+  - 20% là **cột tham chiếu luật** cố định bên phải, cuộn riêng. Bấm chip Điều/Khoản/Điểm thì nguyên văn và lịch sử phiên bản hiện trong cột này, không che câu trả lời; khi chưa chọn gì, cột hiện hướng dẫn.
+  - Các cột ngắn của bảng mức phạt (phương tiện, mức phạt, trừ điểm, tước GPLX) không ngắt dòng.
+- **Màn < 1280px:** cột chat tối đa 760px, căn giữa; nguyên văn mở trong panel trượt từ phải (bottom sheet trên điện thoại).
 
 **Trang `/van-ban`**: lưới thẻ văn bản (2–3 cột desktop, 1 cột mobile). Mỗi thẻ: số hiệu (mono), tên, badge hiệu lực, ngày ban hành/hiệu lực. Thanh lọc phía trên là các chip chọn.
 
@@ -1044,7 +1058,7 @@ Vì đây là trang tra cứu luật, áp dụng quy tắc **"khung brutal, nộ
 - Vùng chạm tối thiểu 44×44px.
 - Focus nhìn thấy rõ trên mọi phần tử tương tác (outline xanh 3px).
 - Tương phản chữ/nền tối thiểu WCAG AA.
-- Chip câu hỏi phụ là `<button>` trong nhóm có `aria-label` là nội dung câu hỏi phụ.
+- Câu hỏi phụ là nhóm radio thật trong `<fieldset>`/`<legend>`: chọn bằng phím mũi tên, trình đọc màn hình đọc được tên câu hỏi; focus hiện viền đen 2px.
 
 #### 15.3.9. Triển khai (Tailwind)
 - Khai báo token trong `web/app/globals.css` (biến CSS ở trên) và ánh xạ vào `tailwind.config.ts` (`colors`, `boxShadow: { brutal: '5px 5px 0 0 #111', 'brutal-sm': '3px 3px 0 0 #111' }`, `borderWidth: { 3: '3px' }`, `fontFamily`).

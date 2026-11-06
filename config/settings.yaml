@@ -81,6 +81,9 @@ llm:
 qa:
   # Cosine thấp nhất của chunk tốt nhất. Đo 12 câu: giao thông ≥ 0,65; lạc đề ≤ 0,51 (D-021)
   min_similarity: 0.55
+  # Tầng hai (D-030): câu ngắn kiểu từ khoá có cosine thấp hơn câu đầy đủ. Nhận nếu cosine ≥ mức này VÀ mọi từ
+  # (trừ từ dừng) của câu đều có trong chunk đứng đầu. Đo 14 cụm giao thông ngắn 0,533–0,711; 12 câu lạc đề ≤ 0,49.
+  min_similarity_keyword: 0.50
   similarity_margin: 0.06  # ứng viên: chunk có cosine ≥ cosine tốt nhất − margin (RRF không so được giữa các câu)
   candidate_chunks: 12     # và nằm trong từng này chunk đầu
   max_facts: 8             # số dòng tối đa trong một câu trả lời

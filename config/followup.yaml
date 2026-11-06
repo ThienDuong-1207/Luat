@@ -4,6 +4,9 @@ gain_threshold: 0.15
 dimensions:
   phuong_tien:
     question: "Bạn điều khiển loại phương tiện nào?"
+    # D-029: câu không nêu loại xe mà mức phạt khác nhau theo loại xe thì luôn hỏi; luôn có các lựa chọn phổ biến
+    always_ask: true
+    common_options: [xe_may, o_to, xe_dap]
     labels: {xe_may: "Xe máy", o_to: "Ô tô", xe_4_banh_dong_co: "Xe bốn bánh có gắn động cơ", may_keo: "Máy kéo", xe_may_chuyen_dung: "Xe máy chuyên dùng", xe_dap: "Xe đạp", xe_tho_so: "Xe thô sơ", nguoi_di_bo: "Người đi bộ", hanh_khach: "Hành khách", co_gioi: "Xe cơ giới nói chung"}
   nong_do_con:
     question: "Nồng độ cồn đo được ở mức nào?"

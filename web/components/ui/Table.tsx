@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-export type Column<T> = { header: string; cell: (row: T) => ReactNode; numeric?: boolean };
+/** nowrap: giữ trên một dòng khi cột hỏi đáp đủ rộng (≥ 1280px), để cột văn bản dài nhận phần còn lại. */
+export type Column<T> = { header: string; cell: (row: T) => ReactNode; numeric?: boolean; nowrap?: boolean };
 
 /** Bảng ở desktop, danh sách thẻ ở mobile (spec 15.3.5). */
 export function Table<T>({ columns, rows, caption }: { columns: Column<T>[]; rows: T[]; caption: string }) {
@@ -11,7 +12,7 @@ export function Table<T>({ columns, rows, caption }: { columns: Column<T>[]; row
         <thead>
           <tr className="bg-yellow">
             {columns.map((c) => (
-              <th key={c.header} scope="col" className={`label border-2 border-ink p-2 ${c.numeric ? "text-right" : "text-left"}`}>
+              <th key={c.header} scope="col" className={`label border-2 border-ink p-2 ${c.numeric ? "text-right" : "text-left"} ${c.nowrap ? "xl:whitespace-nowrap" : ""}`}>
                 {c.header}
               </th>
             ))}
@@ -21,7 +22,7 @@ export function Table<T>({ columns, rows, caption }: { columns: Column<T>[]; row
           {rows.map((row, i) => (
             <tr key={i}>
               {columns.map((c) => (
-                <td key={c.header} className={`border-2 border-ink p-2 align-top ${c.numeric ? "text-right font-mono" : ""}`}>
+                <td key={c.header} className={`border-2 border-ink p-2 align-top ${c.numeric ? "text-right font-mono" : ""} ${c.nowrap ? "xl:whitespace-nowrap" : ""}`}>
                   {c.cell(row)}
                 </td>
               ))}

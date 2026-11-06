@@ -23,8 +23,10 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi" className={`${sans.variable} ${mono.variable}`}>
-      <body className="flex min-h-dvh flex-col">
+    // suppressHydrationWarning: tiện ích trình duyệt (Grammarly, Bitdefender, trình quản lý mật khẩu…) hay gắn thêm
+    // thuộc tính vào <html>/<body> trước khi React hydrate. Chỉ bỏ qua thuộc tính của đúng hai thẻ này, không lan xuống con.
+    <html lang="vi" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
+      <body className="flex min-h-dvh flex-col" suppressHydrationWarning>
         <AsOfProvider>
           <Header />
           {children}

@@ -21,6 +21,9 @@ Mode = Literal["hybrid", "vector", "keyword"]
 
 COLUMNS = "chunk_id, provision_key, version_no, so_hieu, hierarchy_path, display_text, valid_from, valid_to"
 VALID = ":as_of >= valid_from AND :as_of < valid_to"
+# Chỉ chunk có violation còn hiệu lực: dùng để tìm "mức phạt liên quan" cho câu hỏi về quy định (D-029)
+HAS_PENALTY = """EXISTS (SELECT 1 FROM violations vi WHERE vi.provision_key = chunks.provision_key
+                 AND :as_of >= vi.valid_from AND :as_of < vi.valid_to)"""
 
 
 @dataclass
@@ -97,11 +100,13 @@ def _attach_violations(conn, hits: list[SearchHit], as_of: date) -> None:
 
 def hybrid_search(
     engine: Engine, embedder: Embedder, query: str, as_of: date, cfg: RetrievalSettings,
-    k: int | None = None, mode: Mode = "hybrid", apply_validity: bool = True,
+    k: int | None = None, mode: Mode = "hybrid", apply_validity: bool = True, penalties_only: bool = False,
 ) -> list[SearchHit]:
     """`mode` và `apply_validity=False` chỉ dùng cho thí nghiệm spec 16.3."""
     where = f"AND {VALID}" if apply_validity else ""
-    params = {"as_of": as_of} if apply_validity else {}
+    if penalties_only:
+        where += f" AND {HAS_PENALTY}"
+    params = {"as_of": as_of} if apply_validity or penalties_only else {}
     n = cfg.branch_top_n
     query = expand_query(query, cfg.query_expansions)
     with engine.connect() as conn:
