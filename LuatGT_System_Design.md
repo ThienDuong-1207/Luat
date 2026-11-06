@@ -2,13 +2,24 @@
 
 > **Tài liệu thiết kế hệ thống (System Design Spec) dùng để giao cho AI code.**
 > Môn: Big Data Analytics (72ITDS40303), Đại học Văn Lang. Nhóm 01.
-> Phiên bản: v1.0 (20/10/2026)
+> Phiên bản: v1.1 (06/11/2026)
+>
+> **Thay đổi v1.1:** đối chiếu với reading list môn học và sách *Fundamentals of Data Engineering* (FDE). Spec được cập nhật để khớp với code đã chạy, ghi theo D-014, D-023 và D-024. Phần bổ sung mới gồm:
+> - phương án kiến trúc bị loại, đường đi khi lỗi và giả định chi phí (P16, mục 3.2);
+> - các undercurrent của FDE Ch.2 (mục 3.3);
+> - bảo đảm commit của Silver và Gold (P14, mục 5.4);
+> - yêu cầu bằng chứng Spark (P04–P08, mục 8.7);
+> - ranh giới exactly-once và phương án Kafka (P09–P10, mục 13);
+> - tách tập eval và thẻ tái lập (P11–P12, mục 16);
+> - milestone M11 (mục 17).
+>
+> Chi tiết ở `docs/DECISIONS.md` D-025.
 
 ---
 
 ## 0. Hướng dẫn cho AI coding assistant (đọc trước khi code)
 
-1. **Làm theo thứ tự Milestone ở mục 14.** Không nhảy bước. Mỗi milestone có tiêu chí nghiệm thu; chỉ chuyển sang milestone sau khi tiêu chí trước đã đạt và có test.
+1. **Làm theo thứ tự Milestone ở mục 17.** Không nhảy bước. Mỗi milestone có tiêu chí nghiệm thu; chỉ chuyển sang milestone sau khi tiêu chí trước đã đạt và có test.
 2. **Không đoán CSS selector của vbpl.vn.** Trang có bot detection và cấu trúc HTML chưa được xác nhận. Milestone 1 bắt buộc lưu HTML mẫu (fixtures) bằng Playwright, rồi mới viết selector dựa trên fixtures đó. Mọi selector đặt trong `config/sources/vbpl.yaml`, không viết cứng trong code.
 3. **Không tìm cách vượt bot detection** (không xoay proxy, không giả mạo, không giải CAPTCHA). Nếu bị chặn, crawler dừng, ghi log và báo lỗi.
 4. **Mọi bước ghi dữ liệu phải idempotent:** chạy lại N lần cho cùng kết quả, không sinh bản trùng.
@@ -84,7 +95,7 @@ Nguồn có thể đổi giao diện bất kỳ lúc nào. Vì vậy:
 
 ```
                         ┌─────────────────────────────────────────────┐
-                        │      Airflow (orchestration, chạy hằng ngày) │
+                        │ Airflow trên máy host (orchestration, D-024) │
                         └─────────────────────────────────────────────┘
                                           │
  vbpl.vn ──(Playwright, rate-limited)──▶ [1] CRAWLER (3 tầng: discover → detail → download)
@@ -103,7 +114,7 @@ Nguồn có thể đổi giao diện bất kỳ lúc nào. Vì vậy:
                                           │
                                           │  [5] EVENTS (câu hỏi, lựa chọn, feedback)
                                           ▼
-                    events (file/Kafka) ──▶ Spark Structured Streaming (watermark) ──▶ Postgres ──▶ Dashboard
+                    events/ (mỗi event một file; Kafka tuỳ chọn) ──▶ Spark Structured Streaming (watermark) ──▶ Postgres ──▶ Dashboard
 ```
 
 ### 3.1. Tech stack
@@ -121,9 +132,60 @@ Nguồn có thể đổi giao diện bất kỳ lúc nào. Vì vậy:
 | Backend | FastAPI, Pydantic v2, SQLAlchemy 2 | |
 | Frontend | Next.js (App Router), TypeScript, Tailwind | phong cách Neo-brutalism (mục 15.3) |
 | Streaming | Spark Structured Streaming; source mặc định = thư mục JSON, tuỳ chọn Kafka | áp dụng P09 |
-| Orchestration | Apache Airflow 2.x | |
-| Hạ tầng | Docker Compose | |
+| Orchestration | Apache Airflow 2.11, chạy trên host trong `.venv-airflow` | Crawler cần trình duyệt headed (D-007, D-024) |
+| Hạ tầng | Docker Compose cho Postgres và MinIO | Postgres map cổng 5433 nếu 5432 đã bị chiếm |
 | Test | pytest, pytest-asyncio; Playwright test cho frontend (tuỳ chọn) | |
+
+### 3.2. Phương án kiến trúc và lựa chọn (P16; FDE Ch.3)
+
+**Yêu cầu quyết định kiến trúc:**
+- trả lời theo đúng phiên bản luật tại một ngày;
+- replay được khi parser sai;
+- nguồn không có data contract và có chống bot;
+- dữ liệu nhỏ (cỡ MB), chạy trên một máy.
+
+| Tiêu chí | **A. Chọn: lake Parquet + Postgres phục vụ** | B. Chỉ Postgres (bỏ Spark và MinIO) | C. Lakehouse đầy đủ (Delta Lake, Spark phục vụ) |
+|---|---|---|---|
+| Ingestion | Playwright, ghi Bronze bất biến | Như A | Như A |
+| Lưu trữ | Bronze/Silver trên object storage, Gold trong Postgres | Mọi thứ trong Postgres, kể cả HTML gốc | Mọi tầng là bảng Delta |
+| Xử lý | Spark local | Python + SQL | Spark |
+| Phục vụ | Postgres, pgvector, FTS, truy vấn dưới giây | Như A | Phải thêm vector store; Spark không hợp truy vấn tương tác |
+| Replay khi sửa parser | Đọc lại Bronze | Đọc lại cột HTML trong DB | Đọc lại Bronze, có time travel |
+| Commit nguyên tử | Chỉ Gold, nhờ transaction Postgres (5.4) | Có ở mọi tầng | Có ở mọi tầng |
+| Chi phí vận hành | 2 container + Airflow | 1 container | Thêm thư viện Delta và cấu hình catalog |
+| Lý do chọn hoặc loại | **Chọn:** tách lưu trữ khỏi phục vụ, áp dụng được Spark và Parquet của môn học, mỗi tầng thay được độc lập | **Loại:** đơn giản nhất và đủ cho kho 9 văn bản, nhưng không mở rộng khi kho lớn và không cho thấy được kiến thức xử lý phân tán | **Loại ở giai đoạn 1:** chưa có ghi đồng thời nên log chưa mang lại nhiều, nhưng là hướng nâng cấp đầu tiên (5.4) |
+
+Quyết định A **đảo ngược được**. Silver là Parquet chuẩn nên chuyển sang Delta không phải viết lại dữ liệu, và Gold dựng lại được hoàn toàn từ Bronze.
+
+**Đường đi khi lỗi (failure path):**
+```
+crawl bị chặn ──▶ run status=blocked, task Airflow fail ──▶ Dataset không phát ──▶ dag_build không chạy ──▶ Gold cũ vẫn phục vụ
+selector đổi ──▶ schema_check thiếu trường ──▶ không ghi bản ghi thiếu, log lỗi ──▶ sửa vbpl.yaml ──▶ replay từ Bronze
+parser sai   ──▶ quality rule mức error ──▶ build_gold dừng trước khi publish ──▶ Gold cũ vẫn phục vụ
+build_gold chết giữa chừng ──▶ transaction Postgres rollback ──▶ không có trạng thái nửa vời
+MinIO/Postgres mất dữ liệu ──▶ Bronze là nguồn duy nhất không dựng lại được ──▶ phải sao lưu Bronze (3.3)
+streaming chết ──▶ chạy lại từ checkpoint ──▶ upsert idempotent nên không đếm trùng
+```
+
+**Giả định chi phí kiểm chứng được.** Mỗi giả định có cách đo; đo trong M11.
+
+| Giả định | Cách kiểm chứng | Nếu sai thì |
+|---|---|---|
+| Kho giai đoạn 1 nhỏ hơn 100 MB, Spark local đủ | `du` trên bucket, ghi vào báo cáo. Đo ngày 06/11/2026: Silver ~1 MB, Gold ~0,5 MB | Chuyển Spark sang cluster, giữ nguyên code |
+| Thời gian crawl bị chặn bởi rate limit, không bởi CPU | Thời gian crawl ≈ số trang × độ trễ trung bình (3–6 s) | Tìm nút thắt khác trong log |
+| `build_silver` + `build_gold` dưới 5 phút trên laptop | Thời gian task trong Airflow | Xem Spark UI tìm stage chậm (8.7) |
+| Truy vấn hỏi đáp dưới 2 s khi không dùng LLM | p50/p95 thời gian `/api/ask` trong eval | Bật reranker hoặc giảm k |
+
+### 3.3. Undercurrents (FDE Ch.2)
+
+| Undercurrent | Áp dụng | Còn thiếu (làm ở M11) |
+|---|---|---|
+| Security | Không vượt chống bot; không lưu PII; API mỏng. Khoá MinIO và DB nằm trong `.env`, không commit | API dùng role Postgres quyền tối thiểu: chỉ đọc dữ liệu luật, chỉ ghi `qa_sessions` (least privilege, FDE Ch.10) |
+| Data management | Lineage: mỗi bản ghi Silver/Gold truy được về `vbpl_id`, sha256 file Bronze và `selector_version`. Mọi bản ghi quarantine có `run_id`, trỏ tới `crawl_runs` hoặc `job_runs` (D-027) | |
+| DataOps / observability | Log có cấu trúc, `crawl_runs`, quality rule, số dòng mỗi bảng. Bảng `job_runs` ghi thời gian chạy, trạng thái và độ tươi (`data_crawled_at`) của từng job build; dashboard hiển thị (D-027) | `dag_stream` và `dag_eval` chưa ghi `job_runs` |
+| Orchestration | Airflow Dataset nối crawl → build | |
+| Software engineering | pytest, test không gọi mạng, config ngoài code | |
+| Phục hồi | Gold và Silver dựng lại được từ Bronze | Sao lưu Bronze ra ngoài máy, vì đây là tầng duy nhất không tái tạo được |
 
 ---
 
@@ -132,7 +194,8 @@ Nguồn có thể đổi giao diện bất kỳ lúc nào. Vì vậy:
 ```
 luatgt/
 ├── README.md
-├── docker-compose.yml            # postgres(pgvector), minio, airflow, (kafka tuỳ chọn)
+├── docker-compose.yml            # postgres(pgvector), minio, (kafka tuỳ chọn); Airflow chạy trên host (D-024)
+├── scripts/airflow.sh            # khởi động Airflow trong .venv-airflow
 ├── .env.example
 ├── pyproject.toml
 ├── config/
@@ -141,8 +204,9 @@ luatgt/
 │   └── sources/
 │       └── vbpl.yaml             # URL template, tên tab, CSS selector (có selector_version)
 ├── docs/
-│   ├── DECISIONS.md              # ghi lại quyết định/thay đổi so với spec
-│   └── SOURCE_NOTES.md           # ghi chú cấu trúc trang vbpl.vn sau khi khảo sát
+│   ├── DECISIONS.md              # ghi lại quyết định/thay đổi so với spec (dạng ADR, mục 3.2)
+│   ├── SOURCE_NOTES.md           # ghi chú cấu trúc trang vbpl.vn sau khi khảo sát
+│   └── evidence/                 # bằng chứng thí nghiệm: query plan, Spark UI, so sánh định dạng (M11)
 ├── src/luatgt/
 │   ├── common/                   # config loader, logging, storage client (MinIO), db
 │   ├── crawler/
@@ -185,8 +249,10 @@ luatgt/
 ├── db/migrations/                # SQL migration (hoặc Alembic)
 ├── web/                          # Next.js frontend
 ├── eval/
-│   ├── questions.yaml            # bộ câu hỏi đánh giá có đáp án chuẩn
-│   └── run_eval.py
+│   ├── questions.yaml            # bộ câu hỏi đánh giá có đáp án chuẩn, mỗi câu có trường split: dev|test
+│   ├── run_eval.py               # ghi kèm thẻ tái lập (mục 16.4)
+│   ├── gen_events.py
+│   └── run_watermark_experiment.py
 └── tests/
     ├── fixtures/vbpl/            # HTML/PDF mẫu lưu từ Milestone 1
     └── ...
@@ -208,10 +274,34 @@ bronze/
 
 ### 5.2. Silver (MinIO `silver`, Parquet, phân vùng theo `vbpl_id`)
 - `documents`, `document_files`, `document_relations`, `provisions`, `amendments`.
+- Spark ghi vào thư mục staging rồi đồng bộ lên bucket (D-014).
+- **Vì sao phân vùng theo `vbpl_id` (P04, P07).** Đơn vị replay là một văn bản: parse lại một văn bản chỉ ghi đè đúng partition của nó.
+- **Cái giá phải trả:**
+  - Partition lệch nhau. Ngày 06/11/2026, partition `provisions` lớn nhất (~120 KB) gấp khoảng 6 lần partition nhỏ nhất (~20 KB).
+  - Mỗi văn bản sinh ít nhất một file nhỏ cho mỗi bảng: hiện có 37 file, từ 1 KB đến 118 KB.
+  - Ở giai đoạn 1 chấp nhận được.
+- **Quy tắc khi kho lớn lên:** nếu kích thước file trung vị dưới 1 MB và có hơn 200 văn bản, đổi khoá phân vùng sang `loai_van_ban` hoặc năm ban hành và gom file (compaction). Các ngưỡng này là giả định, phải đo lại trước khi đổi. Ghi quyết định vào DECISIONS.md.
 
 ### 5.3. Gold
 - Parquet: `provision_versions`, `violations`, `chunks`.
-- Nạp vào PostgreSQL để phục vụ API (bảng ở mục 6). Nạp theo kiểu **upsert theo khoá** (idempotent).
+- Nạp vào PostgreSQL để phục vụ API (bảng ở mục 6). Nạp theo kiểu **upsert theo khoá** (idempotent), toàn bộ trong **một transaction**.
+
+### 5.4. Bảo đảm commit của từng tầng (P14)
+
+| Tầng | Ghi đồng thời | Người đọc có thể thấy dữ liệu ghi dở không | Snapshot / time travel |
+|---|---|---|---|
+| Bronze | Không xảy ra: một crawler, tên file theo thời điểm và hash | Không: file chỉ thêm, không sửa | Có lịch sử theo `crawled_at` |
+| Silver | Không có transaction log. An toàn nhờ Airflow chạy tuần tự, không có hai job cùng ghi | **Có thể** khi đang đồng bộ staging lên bucket. Hiện tại không ai đọc Silver lúc đó | Không |
+| Gold (Postgres) | Transaction Postgres | Không: xoá và ghi lại trong cùng transaction, lỗi giữa chừng thì rollback | Không, nhưng `provision_versions` giữ lịch sử nội dung luật (SCD2) |
+
+- **Giới hạn cần nêu trong báo cáo:** Silver là "lake chỉ gồm file".
+  - Chạy đồng thời hai lần `build_silver`, hoặc đọc Silver trong lúc đang ghi, có thể cho kết quả không nhất quán.
+  - Không quay lại được phiên bản Silver hôm trước.
+- **Điều kiện chuyển sang Delta Lake** (phương án C ở mục 3.2), khi xảy ra một trong các trường hợp:
+  - có hơn một người ghi (ví dụ crawl nhiều nguồn song song);
+  - cần đọc Silver trong lúc đang ghi;
+  - cần so sánh kết quả parse giữa hai lần chạy bằng time travel.
+- **Khi chuyển:** Silver ghi bằng `format("delta")`. Mỗi lần `build_silver` là một commit trong `_delta_log`. `build_gold` đọc một snapshot cố định và ghi số version Delta vào `crawl_runs` để có lineage.
 
 > **Ghi chú liên hệ P01 (HDFS):** PDF luật chỉ vài trăm KB, nhỏ hơn rất nhiều block 128 MB của HDFS. Lưu hàng nghìn file nhỏ trên HDFS gây small-files problem (NameNode giữ metadata mọi file trong RAM). Vì vậy file gốc để trên object storage; Silver/Gold là Parquet khối lớn. Ghi lại số liệu (số file, tổng dung lượng, kích thước trung bình) để làm evidence trong báo cáo.
 
@@ -571,6 +661,45 @@ Mỗi run ghi tổng số bản ghi pass/warn/error vào log và `crawl_runs`/b�
 - `jobs/build_gold.py`: Silver → `provision_versions`, `violations` → Parquet Gold → upsert Postgres.
 - `jobs/build_index.py`: Gold → `chunks` (embed_text, embedding, tsv) → upsert Postgres. Chỉ embed lại chunk có `embed_text` thay đổi (so hash).
 
+### 8.8. Lựa chọn API Spark và bằng chứng cần có (P04–P08)
+
+**RDD hay DataFrame (P06).**
+- Bước parse trong `build_silver` dùng **RDD** (`mapPartitions`):
+  - input là HTML/PDF không có schema;
+  - parser là code Python thuần (regex, cây điều khoản), Catalyst không tối ưu được.
+- Ngay sau parse, dữ liệu chuyển sang **DataFrame** có schema tường minh (`SCHEMAS`) để ghi Parquet.
+- Mọi bước sau đó (đọc Silver, gộp, ghi Gold) dùng DataFrame hoặc Spark SQL.
+- Không viết UDF Python cho việc mà hàm có sẵn của Spark làm được.
+
+**Cache (P05).**
+- `build_silver` cache RDD `tagged`, vì RDD này được đọc lại một lần cho mỗi bảng output (6 bảng).
+- Không cache, Spark sẽ parse lại toàn bộ văn bản 6 lần.
+- Phải `unpersist()` sau khi ghi xong.
+- Chỉ cache dữ liệu được dùng lại nhiều lần; mỗi chỗ cache có một dòng comment giải thích.
+
+**Partition và lệch dữ liệu (P04).**
+- Số partition khi parse là `min(số văn bản, spark.shuffle_partitions)`, nên mỗi task là một hoặc vài văn bản.
+- Văn bản dài (NĐ 168/2024) là straggler tự nhiên.
+- Phải ghi thời gian từng task để thấy độ lệch.
+- Nếu kho lớn lên, chia văn bản dài theo Chương trước khi parse, hoặc sắp văn bản theo kích thước để phân phối đều.
+
+**Bằng chứng lưu ở `docs/evidence/` (M11):**
+1. `explain(mode="formatted")` của các DataFrame chính trong `build_silver` và `build_gold`, chỉ ra:
+   - Exchange (shuffle) nằm ở đâu;
+   - vì sao `repartition("vbpl_id")` tạo một shuffle.
+2. Ảnh Spark UI hoặc bảng số liệu stage/task của một lần chạy:
+   - số job, stage, task;
+   - thời gian task dài nhất so với trung vị.
+3. So sánh có và không có `cache()`: cùng dữ liệu, cùng máy, chạy 3 lần, báo trung vị.
+4. So sánh CSV / JSON / Parquet trên bảng `provisions` (P07):
+   - kích thước, thời gian ghi, thời gian đọc;
+   - lượng byte đọc khi chỉ lấy 2 cột và khi lọc theo `vbpl_id` (column pruning, partition pruning).
+
+**Quy tắc.**
+- Không đổi cấu hình Spark (số partition, ngưỡng broadcast) nếu chưa có plan hoặc số đo cho thấy vấn đề.
+- Mỗi thay đổi ghi trước/sau vào DECISIONS.md.
+- Dữ liệu cỡ MB nên kết quả chỉ minh hoạ cơ chế, không dùng để kết luận hiệu năng.
+
 ---
 
 ## 9. Retrieval (FDE Ch.9: Serving)
@@ -703,12 +832,16 @@ dimensions:
 
 ## 13. Streaming log hành vi (áp dụng P09)
 
-### 13.1. Event schema (JSON, mỗi dòng một event)
+### 13.1. Event schema (JSON, mỗi event một file)
+API ghi mỗi event vào một file riêng trong `events/.tmp/` rồi đổi tên nguyên tử sang `events/` (D-023).
+- File source của Spark đọc mỗi file đúng một lần, nên ghi nối vào file đã đọc sẽ mất dữ liệu.
+- Cái giá phải trả là nhiều file nhỏ; lưu lượng lớn thì chuyển Kafka (13.4).
 ```json
 {"event_id": "uuid", "event_time": "2026-10-20T07:46:12+07:00", "type": "ask|select_option|feedback",
  "session_id": "uuid", "topic": "nong_do_con", "thumbs": "up|down|null", "client_sent_at": "..."}
 ```
 - `event_time` = lúc người dùng thao tác (lấy từ client). Server thêm `ingest_time`.
+- Event có `event_time` vượt `ingest_time` quá `streaming.max_client_ahead` (5 phút) bị bỏ. Nếu giữ lại, một client đặt sai đồng hồ sẽ đẩy watermark đi xa và làm mất mọi event thật sau đó (D-023).
 - Event có thể đến trễ (mất mạng, gửi lại) và có thể trùng (retry) → đây là dữ liệu at-least-once.
 
 ### 13.2. Job `streaming/qa_events_stream.py`
@@ -728,9 +861,40 @@ counts = (events.groupBy(window("event_time", "10 minutes"), "topic")
 - Log `numRowsDroppedByWatermark` từ `query.lastProgress` vào metrics.
 - **Thí nghiệm cho báo cáo:** chạy cùng bộ event (có event trễ cố ý) với 2 watermark (5 phút vs 15 phút), so sánh độ đầy đủ, độ trễ ra kết quả, số event bị drop. Script sinh event giả lập: `eval/gen_events.py`.
 - Ghi rõ giới hạn: `foreachBatch` mặc định at-least-once; tính đúng một lần chỉ đạt nhờ upsert idempotent.
+- Spark loại event trễ dựa trên watermark của **batch trước**. Một event quá hạn vẫn có thể được đếm nếu đến đúng batch mà watermark vừa nhảy lên.
+- Watermark **không bảo đảm** không còn event nào đến trễ hơn; nó chỉ quy định khi nào hệ thống ngừng chờ.
 
 ### 13.3. Ranh giới thiết kế
 Ingestion văn bản luật dùng **batch** (khối lượng nhỏ, cập nhật theo ngày). Streaming chỉ dùng cho log hành vi người dùng. Ghi lý do này trong báo cáo.
+
+**Phát biểu "đúng một lần" phải nêu đủ các thành phần (P09, P10):**
+
+| Thành phần | Hiện tại | Bảo đảm |
+|---|---|---|
+| Nguồn | Thư mục `events/`, file đổi tên nguyên tử | Phát lại được: file còn nguyên cho đến khi hết hạn lưu |
+| Engine | Spark Structured Streaming, checkpoint offset và state | Chạy lại từ checkpoint, xử lý lại batch dở |
+| Khử trùng | `dropDuplicatesWithinWatermark(event_id)` | Chỉ khử trùng trong phạm vi watermark |
+| Sink | `foreachBatch` + `INSERT … ON CONFLICT DO UPDATE` | Idempotent theo `(window_start, topic)` |
+| Giả định | API ghi event trước khi trả lời; client retry dùng lại `event_id` | |
+
+Kết luận: **at-least-once ở nguồn, kết quả tổng hợp đúng một lần nhờ sink idempotent**. Không gọi là exactly-once đầu-cuối.
+
+**Lưu giữ dữ liệu (NIST Privacy Framework):**
+- File event thô chỉ giữ `streaming.retention_days` (mặc định 30 ngày); bảng tổng hợp giữ lâu dài.
+- Không xoá file mà checkpoint chưa xử lý.
+- Quy tắc "không xoá Bronze" chỉ áp dụng cho văn bản luật, không áp dụng cho log người dùng.
+
+### 13.4. Phương án Kafka (tuỳ chọn, P10)
+Chuyển sang Kafka khi lưu lượng làm thư mục có quá nhiều file nhỏ, hoặc khi có nhiều consumer.
+- **Topic và key:**
+  - Topic `qa_events`; key = `session_id`, để event của một phiên giữ đúng thứ tự trong một partition.
+  - Số partition ≥ số consumer dự kiến. Giai đoạn đầu dùng 3, chỉnh lại theo số đo.
+- **Producer (API):** `acks=all`, `enable.idempotence=true`. Retry không sinh bản trùng trong Kafka. Bản trùng do client gửi lại vẫn được khử bằng `event_id`.
+- **Consumer:**
+  - Spark đọc bằng `format("kafka")` và tự lưu offset trong checkpoint, không commit offset vào consumer group.
+  - Đổi số partition thì phải xoá checkpoint và tính lại từ đầu, hoặc chạy query mới.
+- **Retention:** retention của topic ≥ thời gian tối đa job có thể dừng. Nếu không, offset trong checkpoint trỏ tới dữ liệu đã bị xoá.
+- Transaction của Kafka chỉ bảo đảm trong phạm vi Kafka. Ra Postgres vẫn dựa vào upsert idempotent như bảng trên.
 
 ---
 
@@ -738,13 +902,17 @@ Ingestion văn bản luật dùng **batch** (khối lượng nhỏ, cập nhật
 
 | DAG | Lịch | Task |
 |---|---|---|
-| `dag_crawl_daily` | 02:00 hằng ngày | `crawl_detail` → `crawl_download` → `follow_relations` |
+| `dag_crawl_daily` | 02:00 hằng ngày | `bootstrap` → `crawl_detail` → `crawl_download` (phát Dataset `luatgt://bronze`) |
 | `dag_recheck_weekly` | Chủ nhật 03:00 | đánh dấu lại `pending` các văn bản `con_hieu_luc` |
-| `dag_build` | sau `dag_crawl_daily` | `build_silver` → `quality_checks` → `build_gold` → `build_index` |
+| `dag_build` | theo Dataset `luatgt://bronze` | `build_silver` → `build_gold` (có quality check) → `build_index` |
+| `dag_stream` | mỗi 10 phút | `luatgt stream --once` |
 | `dag_eval` | thủ công | `run_eval` → ghi báo cáo vào `eval/reports/` |
 
 - Mọi task idempotent; DAG chạy lại cùng ngày không sinh dữ liệu trùng.
-- `quality_checks` fail ở mức error → dừng DAG, không publish Gold mới (Gold cũ vẫn phục vụ).
+- Quality check nằm trong `build_gold`: lỗi mức error → dừng trước khi publish, Gold cũ vẫn phục vụ (D-024).
+- Không có `follow_relations` vì giai đoạn 1 chỉ có mode `seed`.
+- Task crawl không retry tự động (7.2). Crawl `blocked` hoặc `partial` làm task fail, nên Dataset không phát và không build dữ liệu dở.
+- `airflow standalone` dùng SQLite và executor tuần tự, chỉ hợp máy dev. Executor tuần tự cũng là lý do Silver không bị hai job ghi cùng lúc (5.4); đổi sang executor song song thì phải xem lại mục 5.4.
 
 ---
 
@@ -902,6 +1070,12 @@ Vì đây là trang tra cứu luật, áp dụng quy tắc **"khung brutal, nộ
 ```
 - Tối thiểu 100 câu; ít nhất 20 câu kiểm tra **đúng phiên bản** (hỏi cùng hành vi trước/sau 15/8/2026).
 - Đáp án chuẩn do nhóm đối chiếu tay với văn bản gốc.
+- **Tách tập (P11).** Mỗi câu có trường `split: dev | test`.
+  - **Dev:** dùng để chỉnh `query_expansions`, ngưỡng `min_similarity`, `similarity_margin`, k, trọng số RRF.
+  - **Test:** khoảng 30% số câu. Viết **trước khi** xem kết quả hệ thống, do một thành viên không chỉnh tham số soạn, và khoá lại (ghi hash file vào thẻ tái lập).
+  - Báo cáo chỉ dùng số trên test. Số trên dev ghi riêng, có nhãn "dev".
+  - 66 câu hiện có đã được dùng để chỉnh tham số (D-021) nên **tất cả thuộc dev**. Tập test phải là câu mới.
+- **Leakage theo thời gian (P12).** Câu kiểm tra phiên bản phải đặt `as_of_date` cụ thể. Không chấm "đúng phiên bản" bằng dữ liệu crawl sau ngày hỏi nếu câu hỏi giả định thời điểm trước đó.
 
 ### 16.2. Chỉ số
 | Chỉ số | Định nghĩa |
@@ -909,14 +1083,41 @@ Vì đây là trang tra cứu luật, áp dụng quy tắc **"khung brutal, nộ
 | Parse accuracy | % Điều/Khoản/Điểm tách đúng trên 3 văn bản (đối chiếu tay hoặc dataset tham khảo) |
 | Extraction accuracy | % violations đúng mức phạt trên mẫu 50 dòng kiểm tra tay |
 | Recall@5 | % câu có điều khoản đúng trong top 5 retrieval |
-| Citation accuracy | % trích dẫn trỏ đúng điều khoản |
+| Citation accuracy | % câu có ít nhất một trích dẫn trỏ đúng điều khoản |
+| Citation precision | % trích dẫn trỏ đúng trên tổng số trích dẫn (phạt trích dẫn thừa) |
+| Latency p50/p95 | thời gian `/api/ask`, kiểm chứng giả định chi phí ở 3.2 |
 | Version correctness | % câu trả lời dùng đúng phiên bản theo `as_of_date` |
 | Avg follow-up rounds | số vòng hỏi phụ trung bình để đến `answered` |
 
 ### 16.3. Thí nghiệm so sánh
 1. Vector-only vs Hybrid vs Hybrid + bộ lọc hiệu lực.
 2. Có câu hỏi phụ vs không có (độ chính xác mức phạt trong câu trả lời).
-3. Watermark 5 phút vs 15 phút cho streaming log (mục 13).
+3. Watermark 5 phút vs 15 phút cho streaming log (mục 13), có mức đối chứng 60 phút.
+4. CSV / JSON / Parquet trên bảng `provisions` (8.8, P07).
+5. Có và không có cache trong `build_silver` (8.8, P05).
+
+Mọi thí nghiệm ghi điều kiện chạy (máy, dữ liệu, số lần lặp) và chỉ so sánh trong cùng điều kiện.
+
+### 16.4. Thẻ tái lập (reproducibility card)
+`run_eval.py` ghi đầu báo cáo:
+- commit git và trạng thái dirty;
+- hash của `questions.yaml`, `settings.yaml` và `followup.yaml`;
+- tên và phiên bản embedding model, LLM (hoặc "template");
+- phiên bản Spark, Postgres, pgvector;
+- số dòng và md5 của `provision_versions` và `violations` (như D-024);
+- seed (nếu có bước ngẫu nhiên);
+- ngày chạy.
+
+Hai lần chạy cùng thẻ phải cho cùng số liệu.
+
+### 16.5. Chỉ số tách theo nhóm (P12; NIST AI RMF "Measure")
+Ngoài chỉ số tổng, báo cáo tách Recall@5, Citation accuracy và Version correctness theo:
+- loại phương tiện (xe máy, ô tô, xe đạp, khác);
+- văn bản nguồn của đáp án;
+- câu có hoặc không chịu ảnh hưởng của sửa đổi;
+- câu viết bằng từ đời thường hay thuật ngữ luật.
+
+Nhóm nào thấp hơn tổng hơn 10 điểm phần trăm thì ghi vào mục 19 như một rủi ro. Mỗi nhóm ghi kèm số câu; nhóm dưới 10 câu chỉ báo số đếm, không báo tỉ lệ.
 
 ---
 
@@ -969,6 +1170,27 @@ Vì đây là trang tra cứu luật, áp dụng quy tắc **"khung brutal, nộ
 - DAGs mục 14; `run_eval.py` xuất báo cáo Markdown các chỉ số mục 16.
 - **Nghiệm thu:** chạy toàn bộ pipeline từ đầu bằng Airflow; báo cáo eval sinh tự động.
 
+### M11. Bổ sung theo giáo án (bằng chứng và sửa giới hạn)
+Thứ tự ưu tiên: mục 1–3 ảnh hưởng tính đúng của số liệu báo cáo nên làm trước.
+1. **Eval (16.1, 16.4, 16.5):**
+   - thêm trường `split`, chuyển 66 câu hiện có sang dev;
+   - soạn ít nhất 34 câu test mới;
+   - thẻ tái lập và bảng chỉ số tách theo nhóm trong `run_eval.py`.
+2. **Lineage và quan sát (3.3):**
+   - mọi bản ghi `quarantine` có `run_id`;
+   - bảng hoặc log metrics ghi thời gian từng job và ngày crawl gần nhất.
+3. **Bảo mật (3.3):** role Postgres riêng cho API, chỉ `SELECT` trên các bảng dữ liệu luật, được `INSERT/UPDATE` duy nhất trên `qa_sessions`. Migration tạo role; `.env.example` có `API_POSTGRES_URL`.
+4. **Bằng chứng Spark (8.8):** plan, stage/task, so sánh cache, so sánh định dạng, lưu ở `docs/evidence/`.
+5. **Lưu giữ event (13.3):** `streaming.retention_days` và lệnh dọn file event đã quá hạn và đã được checkpoint xử lý.
+6. **ADR (3.2):** từ D-025, mỗi quyết định mới trong DECISIONS.md có đủ: bối cảnh, quyết định, phương án bị loại, hệ quả, cách kiểm chứng.
+
+- **Nghiệm thu:**
+  - báo cáo eval có số riêng cho dev và test, thẻ tái lập và bảng theo nhóm;
+  - chạy lại `run_eval.py` hai lần cho cùng số liệu;
+  - `docs/evidence/` có đủ 4 bằng chứng ở 8.8;
+  - role của API ghi vào bảng dữ liệu luật (ví dụ `violations`) bị từ chối (có test);
+  - không còn bản ghi quarantine nào thiếu `run_id` trong lần chạy mới.
+
 ---
 
 ## 18. Ánh xạ kiến thức (dùng cho báo cáo và thuyết trình)
@@ -976,18 +1198,32 @@ Vì đây là trang tra cứu luật, áp dụng quy tắc **"khung brutal, nộ
 | Thành phần hệ thống | Kiến thức áp dụng | Nguồn |
 |---|---|---|
 | Khảo sát vbpl.vn, schema check, selector có version | Đặc điểm source system, schema evolution, không có data contract | FDE Ch.5 |
-| Crawler batch, incremental, retry, idempotent theo hash, replay từ Bronze | Batch vs streaming ingestion, idempotency, late-arriving data, replay | FDE Ch.7; P09 |
-| Bronze/Silver/Gold, Parquet, object storage | Kiến trúc lake/lakehouse, định dạng lưu trữ | FDE Ch.3, Ch.6 |
+| Crawler batch, incremental, retry, idempotent theo hash, replay từ Bronze | Batch vs streaming ingestion, idempotency, late-arriving data, replay | FDE Ch.5 (idempotency), Ch.7 (ingestion, late-arriving data); P09 |
+| Crawl trang web có rate limit, tôn trọng robots.txt, không vượt chống bot | Web scraping và các lưu ý khi thu thập | FDE Ch.7 (Web Scraping) |
+| Bronze/Silver/Gold, Parquet, object storage | Kiến trúc lake/lakehouse, định dạng lưu trữ cột | FDE Ch.3, Ch.6, Phụ lục A; P07. Tên Bronze/Silver/Gold là mô hình "medallion" của Databricks, FDE không dùng thuật ngữ này |
+| Bảo đảm commit theo tầng; Gold publish trong một transaction; điều kiện chuyển Delta Lake (5.4) | Lake chỉ gồm file không có commit nguyên tử hay snapshot; transaction log | P14 |
 | PDF nhỏ không để trên HDFS | Small-files problem, NameNode metadata trong RAM, block lớn | P01; FDE Ch.6 |
+| Phân vùng Silver theo `vbpl_id`, partition lệch, ngưỡng đổi khoá (5.2, 8.8) | Partitioning, skew, straggler, small files | P04; P07 |
 | Spark batch parse/extract | Transformation, distributed processing | FDE Ch.8 |
-| `provision_versions` SCD2, truy vấn `as_of` | Data modeling, slowly changing dimension, event time vs processing time | FDE Ch.8; P09 |
+| Parse bằng RDD, các bước sau bằng DataFrame; cache `tagged`; bằng chứng plan và stage (8.8) | RDD vs DataFrame, lazy evaluation, stage, cache, đọc query plan | P05; P06; P08 |
+| So sánh CSV / JSON / Parquet (8.8) | Lưu trữ theo cột, column pruning, partition pruning | P07; FDE Phụ lục A |
+| `provision_versions` SCD2, truy vấn `as_of` | Data modeling, slowly changing dimension Type 2, event time vs processing time | FDE Ch.8; P09 |
 | Quality checks + quarantine | Data quality, DataOps, không drop âm thầm | FDE Ch.2 (undercurrents) |
-| Hybrid RAG, trích dẫn, câu hỏi phụ | Serving data cho ML/ứng dụng | FDE Ch.9 |
-| Streaming log + watermark + checkpoint + upsert sink | Event time, window, watermark, state, output mode, exactly-once có ranh giới | P09; Spark Structured Streaming Guide |
-| Airflow | Orchestration | FDE Ch.2 (undercurrents) |
-| Rate limit, robots.txt, không lưu PII, disclaimer | Security, privacy, đạo đức dữ liệu | FDE Ch.10 |
+| Hybrid search, trích dẫn, câu hỏi phụ | Serving data cho ML/ứng dụng | FDE Ch.9 (khung serving; FDE không bàn về RAG hay vector search) |
+| Đánh giá: tập dev/test, thẻ tái lập, chỉ số theo nhóm (16.1, 16.4, 16.5) | Không chọn tham số trên tập test, leakage theo thời gian, đánh giá theo nhóm con | P11; P12; NIST AI RMF (Measure). Số hiện có trước M11 là số dev: `query_expansions` được chọn trên chính bộ câu này (D-021) |
+| Streaming log + watermark + checkpoint + upsert sink | Event time, window, watermark, state, output mode, exactly-once có ranh giới | P09; FDE Ch.8 (window, watermark); Spark Structured Streaming Guide (ghi rõ phiên bản Spark đã dùng: 4.2.0) |
+| Event log dùng thư mục file; bảng ranh giới "đúng một lần"; phương án Kafka (13.3, 13.4) | Partition, key, offset, idempotent producer, retention, at-least-once kèm sink idempotent | P10 (lý do chưa dùng Kafka: D-023) |
+| Dashboard theo cửa sổ 10 phút | Trực quan hoá dữ liệu đã gộp thay vì từng bản ghi | P15 |
+| So sánh 3 phương án kiến trúc, đường đi khi lỗi, giả định chi phí (3.2); `docs/DECISIONS.md` dạng ADR | Ghi lại quyết định kiến trúc và phương án bị loại; quyết định đảo ngược được | P16; FDE Ch.3, Ch.4 |
+| Undercurrents: lineage, observability, phục hồi (3.3) | Data management, DataOps | FDE Ch.2 |
+| Airflow, Dataset trigger, không build dữ liệu dở (14) | Orchestration | FDE Ch.2 (undercurrents) |
+| Rate limit, robots.txt, không lưu PII, disclaimer, role DB quyền tối thiểu, lưu giữ event có hạn | Security, privacy, đạo đức dữ liệu | FDE Ch.10; NIST Privacy Framework |
+| Bảng rủi ro theo Govern/Map/Measure/Manage (19) | Quản lý rủi ro của hệ thống AI | NIST AI RMF 1.0 |
 
-> Bổ sung các mã đề khác trong reading list vào bảng này khi đối chiếu.
+> **Đối chiếu ngày 06/11/2026** với reading list môn Big Data Analytics (72ITDS40303, HK 261), bằng cách tìm vị trí từng khái niệm trong FDE.
+> - **Không áp dụng:** P02–P03 (YARN, MapReduce). Spark chạy local, không có cluster. Khi trình bày thì liên hệ: shuffle của `repartition` trong Spark giống pha shuffle của MapReduce.
+> - **Không áp dụng:** P13 (NoSQL, Dynamo). Hệ thống dùng một Postgres, không nhân bản, nên không có bài toán nhất quán khi phân mảnh mạng.
+> - **Chưa có bằng chứng** (phải làm ở M11): P05–P08 và P11–P12.
 
 ---
 
@@ -1001,12 +1237,28 @@ Vì đây là trang tra cứu luật, áp dụng quy tắc **"khung brutal, nộ
 | LLM bịa số liệu | Số liệu lấy từ bảng; kiểm tra số tiền và trích dẫn sau khi sinh |
 | Tình trạng hiệu lực trên trang chưa cập nhật kịp | Job kiểm tra lại hằng tuần; hiển thị ngày crawl gần nhất cạnh câu trả lời |
 | Dữ liệu nhỏ, chạy local | Nêu rõ hệ thống minh hoạ cơ chế, không đo hiệu năng production |
+| Số đánh giá lạc quan do chỉnh tham số trên chính bộ eval | Tách dev/test, báo cáo số test (16.1) |
+| Hệ thống trả lời kém hơn với một nhóm câu hỏi (ví dụ xe đạp, từ đời thường) | Chỉ số theo nhóm (16.5); nhóm thấp ghi vào bảng này |
+| Hai job cùng ghi Silver, hoặc đọc Silver đang ghi dở | Airflow chạy tuần tự; điều kiện chuyển Delta Lake (5.4) |
+| Mất Bronze (tầng duy nhất không dựng lại được) | Sao lưu bucket `bronze` ra ngoài máy (3.3) |
+| Log người dùng giữ quá lâu | `streaming.retention_days`, không lưu định danh (13.3) |
+
+**Quản lý rủi ro theo NIST AI RMF 1.0:**
+
+| Chức năng | Việc cụ thể trong LuậtGT |
+|---|---|
+| **Govern** | Người chịu trách nhiệm: nhóm 01. Mọi lệch spec ghi DECISIONS.md. Disclaimer "không thay thế tư vấn pháp lý". |
+| **Map** | Bối cảnh: người dân tra cứu mức phạt. Tác hại chính: trả sai mức phạt hoặc sai phiên bản luật. Nhóm bị ảnh hưởng: người không biết thuật ngữ luật. |
+| **Measure** | Recall@5, Citation accuracy và precision, Version correctness trên tập test (16); chỉ số theo nhóm (16.5). |
+| **Manage** | Số liệu lấy từ bảng, không từ LLM; kiểm tra trích dẫn sau khi sinh; `not_found` khi độ tương đồng thấp; hiển thị ngày crawl; quarantine và `needs_review`. |
 
 ---
 
 ## 20. Biến môi trường (`.env.example`)
 ```
 POSTGRES_URL=postgresql+psycopg://luatgt:luatgt@localhost:5432/luatgt
+# Máy đã có Postgres ở 5432: đặt POSTGRES_PORT=5433 và sửa cổng trong POSTGRES_URL
+API_POSTGRES_URL=               # role quyền tối thiểu cho API (M11)
 MINIO_ENDPOINT=http://localhost:9000
 MINIO_ACCESS_KEY=
 MINIO_SECRET_KEY=

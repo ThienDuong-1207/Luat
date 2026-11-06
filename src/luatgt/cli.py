@@ -110,7 +110,7 @@ def reparse(
     stats = build_silver(get_settings(), all_docs=all_docs, ids=list(vbpl_id) or None)
     typer.echo(
         f"Silver: {stats['documents']} văn bản, {stats['provisions']} điều khoản, "
-        f"{stats['issues']} vấn đề cần kiểm tra, {stats['uploaded']} file Parquet"
+        f"{stats['issues']} vấn đề cần kiểm tra, {stats['uploaded']} file Parquet (run {stats['run_id']})"
     )
 
 

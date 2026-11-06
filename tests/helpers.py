@@ -21,7 +21,7 @@ SEED_URLS = {
     ND168: "https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-168-2024-nd-cp--173920?tabs=toan-van",
     ND238: f"https://vbpl.vn/van-ban/chi-tiet/nghi-dinh-so-238-2026-nd-cp--{ND238}?tabs=toan-van",
 }
-GOLD_TABLES = ["provisions", "amendments", "provision_versions", "violations", "chunks", "qa_topic_counts"]
+GOLD_TABLES = ["provisions", "amendments", "provision_versions", "violations", "chunks", "qa_topic_counts", "job_runs"]
 CRAWL_TABLES = ["crawl_runs", "crawl_queue", "documents", "document_files", "document_relations", "quarantine"]
 TEST_DB = "luatgt_test"
 

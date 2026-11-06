@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import uuid
 from dataclasses import asdict
 
 from pyspark.sql import SparkSession
@@ -21,6 +22,7 @@ from sqlalchemy import Engine, text
 
 from luatgt.common.config import Settings, get_settings
 from luatgt.common.db import make_engine
+from luatgt.common.job_runs import job_run
 from luatgt.common.logging import get_logger, setup_logging
 from luatgt.common.storage import Storage
 from luatgt.jobs.spark import get_spark, read_silver
@@ -115,6 +117,7 @@ def load_postgres(
     engine: Engine, documents: list[dict], provisions: list[dict], amendments: list[dict],
     versions: list[Version], issues: list[VersionIssue],
     violations: list[Violation] = (), extract_issues: list[VersionIssue] = (),
+    run_id: uuid.UUID | None = None,
 ) -> dict:
     vids = sorted({d["vbpl_id"] for d in documents})
     with engine.begin() as conn:
@@ -175,25 +178,25 @@ def load_postgres(
                 [_violation_row(v) for v in violations])
         conn.execute(text("DELETE FROM quarantine WHERE stage = 'extract' AND NOT resolved"))
         if extract_issues:
-            conn.execute(text("""INSERT INTO quarantine (stage, entity_ref, rule, detail)
-                                 VALUES ('extract', :ref, :rule, CAST(:detail AS jsonb))"""),
-                         [{"ref": i.provision_key, "rule": i.rule,
+            conn.execute(text("""INSERT INTO quarantine (stage, entity_ref, rule, detail, run_id)
+                                 VALUES ('extract', :ref, :rule, CAST(:detail AS jsonb), :run)"""),
+                         [{"ref": i.provision_key, "rule": i.rule, "run": run_id,
                            "detail": json.dumps({**i.detail, "severity": i.severity}, ensure_ascii=False)}
                           for i in extract_issues])
 
         # Hàng đợi xử lý tay: amendment needs_review + cảnh báo khi dựng phiên bản
         conn.execute(text("DELETE FROM quarantine WHERE stage = 'amend' AND NOT resolved"))
-        q = [{"ref": a["target_key"] or a["amendment_id"], "rule": "amendment_needs_review",
+        q = [{"ref": a["target_key"] or a["amendment_id"], "rule": "amendment_needs_review", "run": run_id,
               "detail": json.dumps({"amendment_id": a["amendment_id"], "action": a["action"],
                                     "reason": a.get("review_reason"),
                                     "instruction": a["raw_instruction"]}, ensure_ascii=False)}
              for a in amendments if a["parse_status"] != "ok"]
-        q += [{"ref": i.provision_key, "rule": i.rule,
+        q += [{"ref": i.provision_key, "rule": i.rule, "run": run_id,
                "detail": json.dumps({**i.detail, "severity": i.severity}, ensure_ascii=False)}
               for i in issues]
         if q:
-            conn.execute(text("""INSERT INTO quarantine (stage, entity_ref, rule, detail)
-                                 VALUES ('amend', :ref, :rule, CAST(:detail AS jsonb))"""), q)
+            conn.execute(text("""INSERT INTO quarantine (stage, entity_ref, rule, detail, run_id)
+                                 VALUES ('amend', :ref, :rule, CAST(:detail AS jsonb), :run)"""), q)
     return {"provisions": len(prov_rows), "amendments": len(am_rows), "versions": len(v_rows),
             "violations": len(violations),
             "quarantine_amend": len(q), "documents_missing_in_postgres": missing}
@@ -205,8 +208,16 @@ def build_gold(
     storage: Storage | None = None,
     engine: Engine | None = None,
 ) -> dict:
+    """Chạy job, ghi một dòng job_runs (lỗi chất lượng → status=failed, Gold cũ giữ nguyên)."""
     storage = storage or Storage(settings)
     engine = engine or make_engine(settings)
+    with job_run(engine, "build_gold") as run:
+        run.stats = _build_gold(settings, spark, storage, engine, run.run_id)
+    return {**run.stats, "run_id": str(run.run_id)}
+
+
+def _build_gold(settings: Settings, spark: SparkSession | None, storage: Storage, engine: Engine,
+                run_id: uuid.UUID) -> dict:
     staging = settings.path(settings.paths.gold_staging)
     own_spark = spark is None
     spark = spark or get_spark(settings)
@@ -237,7 +248,8 @@ def build_gold(
             spark.stop()
 
     uploaded = _sync_gold(storage, staging, "provision_versions") + _sync_gold(storage, staging, "violations")
-    stats = load_postgres(engine, documents, provisions, amendments, versions, issues, violations, extract_issues)
+    stats = load_postgres(engine, documents, provisions, amendments, versions, issues, violations, extract_issues,
+                          run_id)
     stats.update({
         "quality": summarize(len(violations), extract_issues + target_issues),
         "multi_version_keys": len({v.provision_key for v in versions if v.version_no > 1}),

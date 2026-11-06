@@ -85,3 +85,26 @@ def test_quality_error_stops_and_keeps_old_gold(ctx, gold, monkeypatch):
         gold()
     with ctx[1].connect() as conn:
         assert conn.execute(text("SELECT count(*) FROM provision_versions")).scalar_one() == before
+        failed = conn.execute(text("""SELECT status, error, finished_at IS NOT NULL AS done FROM job_runs
+                                       WHERE job = 'build_gold' ORDER BY started_at DESC LIMIT 1""")).one()
+    assert failed.status == "failed" and failed.error.startswith("QualityError") and failed.done
+
+
+def test_every_quarantine_row_has_run_id(ctx, gold):
+    """M11 mục 2: quarantine của parse/extract/amend gắn run của job sinh ra nó (D-027)."""
+    stats = gold()
+    with ctx[1].connect() as conn:
+        assert conn.execute(text("SELECT count(*) FROM quarantine")).scalar_one() > 0
+        assert conn.execute(text("SELECT count(*) FROM quarantine WHERE run_id IS NULL")).scalar_one() == 0
+        by_stage = dict(conn.execute(text("""
+            SELECT q.stage, string_agg(DISTINCT coalesce(j.job, 'crawl:' || c.status), ',')
+            FROM quarantine q LEFT JOIN job_runs j ON j.run_id = q.run_id
+            LEFT JOIN crawl_runs c ON c.run_id = q.run_id GROUP BY q.stage""")).all())
+        runs = conn.execute(text("""SELECT job, status, stats, data_crawled_at, finished_at >= started_at AS ok
+                                    FROM job_runs ORDER BY started_at""")).mappings().all()
+    assert by_stage.get("amend") == "build_gold"
+    assert by_stage.get("parse", "build_silver") == "build_silver"
+    assert by_stage.get("extract", "build_gold") == "build_gold"
+    assert [r["job"] for r in runs] == ["build_silver", "build_gold"]
+    assert all(r["status"] == "success" and r["ok"] and r["data_crawled_at"] is not None for r in runs)
+    assert runs[1]["stats"]["versions"] == stats["versions"] and stats["run_id"]

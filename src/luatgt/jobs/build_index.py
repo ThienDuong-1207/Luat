@@ -15,6 +15,7 @@ from sqlalchemy import Engine, text
 
 from luatgt.common.config import Settings, get_settings
 from luatgt.common.db import make_engine
+from luatgt.common.job_runs import job_run
 from luatgt.common.logging import get_logger, setup_logging
 from luatgt.parsing.structure import doc_key
 from luatgt.retrieval.embed import Embedder, SentenceTransformerEmbedder, to_pgvector
@@ -133,7 +134,14 @@ def load_chunks(engine: Engine, chunks: list[Chunk], embedder: Embedder) -> dict
 
 
 def build_index(settings: Settings, engine: Engine | None = None, embedder: Embedder | None = None) -> dict:
+    """Chạy job, ghi một dòng job_runs."""
     engine = engine or make_engine(settings)
+    with job_run(engine, "build_index") as run:
+        run.stats = _build_index(settings, engine, embedder)
+    return {**run.stats, "run_id": str(run.run_id)}
+
+
+def _build_index(settings: Settings, engine: Engine, embedder: Embedder | None) -> dict:
     with engine.connect() as conn:
         documents = [dict(r) for r in conn.execute(
             text("SELECT vbpl_id, so_hieu, ten_van_ban FROM documents")).mappings()]

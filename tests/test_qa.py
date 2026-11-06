@@ -277,4 +277,26 @@ def test_api_health_and_stats(client):
     assert client.get("/api/health").json()["postgres"] == "ok"
     summary = client.get("/api/stats/summary").json()
     assert summary["n_questions"] == 0 and summary["last_run"] is None
+    assert summary["jobs"] == [] and summary["quarantine_by_run"] == []
     assert client.get("/api/stats/topics", params={"from": "2026-01-01T00:00:00", "to": "2026-02-01T00:00:00"}).json() == []
+
+
+@pytest.mark.integration
+def test_api_stats_shows_job_runs_and_freshness(client, ctx):
+    """M11 mục 2: dashboard thấy lần chạy từng job, thời gian chạy, độ tươi dữ liệu và quarantine theo run."""
+    from luatgt.common.job_runs import job_run
+
+    engine = ctx[1]
+    with job_run(engine, "build_gold") as run, engine.begin() as conn:
+        conn.execute(text("""INSERT INTO quarantine (stage, entity_ref, rule, run_id)
+                                 VALUES ('extract', 'x', 'r', :id)"""), {"id": run.run_id})
+    with pytest.raises(RuntimeError), job_run(engine, "build_index"):
+        raise RuntimeError("hỏng")
+    summary = client.get("/api/stats/summary").json()
+    jobs = {j["job"]: j for j in summary["jobs"]}
+    assert jobs["build_gold"]["status"] == "success" and jobs["build_gold"]["duration_s"] >= 0
+    assert jobs["build_gold"]["data_crawled_at"] is not None and summary["last_crawled_at"] is not None
+    assert jobs["build_index"]["status"] == "failed"
+    gold_run = next(r for r in summary["quarantine_by_run"] if r["run_id"] == str(run.run_id))
+    assert gold_run["job"] == "build_gold" and gold_run["n"] == 1
+    assert summary["quarantine_without_run"] == 0

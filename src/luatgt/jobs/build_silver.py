@@ -15,6 +15,7 @@ import argparse
 import json
 import re
 import shutil
+import uuid
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
@@ -25,6 +26,7 @@ from sqlalchemy import Engine, text
 
 from luatgt.common.config import Settings, get_settings
 from luatgt.common.db import make_engine
+from luatgt.common.job_runs import job_run
 from luatgt.common.logging import get_logger, setup_logging
 from luatgt.common.storage import Storage
 from luatgt.crawler.selectors import SourceConfig, load_source_config
@@ -253,7 +255,7 @@ def sync_to_bucket(storage: Storage, staging: Path, ids: list[str]) -> int:
     return uploaded
 
 
-def update_postgres(engine: Engine, ids: list[str], issues: list[tuple]) -> None:
+def update_postgres(engine: Engine, ids: list[str], issues: list[tuple], run_id: uuid.UUID | None = None) -> None:
     """Làm mới quarantine (stage=parse) của các văn bản vừa parse, tắt cờ needs_reparse."""
     names = [f.name for f in SCHEMAS["parse_issues"].fields]
     with engine.begin() as conn:
@@ -266,10 +268,10 @@ def update_postgres(engine: Engine, ids: list[str], issues: list[tuple]) -> None
             row = dict(zip(names, t, strict=True))
             detail = {**json.loads(row["detail"] or "{}"), "vbpl_id": row["vbpl_id"]}
             conn.execute(
-                text("""INSERT INTO quarantine (stage, entity_ref, rule, detail)
-                        VALUES ('parse', :ref, :rule, CAST(:detail AS jsonb))"""),
+                text("""INSERT INTO quarantine (stage, entity_ref, rule, detail, run_id)
+                        VALUES ('parse', :ref, :rule, CAST(:detail AS jsonb), :run)"""),
                 {"ref": row["provision_key"] or row["vbpl_id"], "rule": row["rule"],
-                 "detail": json.dumps(detail, ensure_ascii=False)},
+                 "detail": json.dumps(detail, ensure_ascii=False), "run": run_id},
             )
         conn.execute(text("UPDATE documents SET needs_reparse = false WHERE vbpl_id = ANY(:ids)"),
                      {"ids": ids})
@@ -283,9 +285,16 @@ def build_silver(
     storage: Storage | None = None,
     engine: Engine | None = None,
 ) -> dict:
-    """Chạy job. Trả thống kê {documents, provisions, issues, uploaded, ids}."""
+    """Chạy job, ghi một dòng job_runs. Trả thống kê {documents, provisions, issues, uploaded, ids, run_id}."""
     storage = storage or Storage(settings)
     engine = engine or make_engine(settings)
+    with job_run(engine, "build_silver") as run:
+        run.stats = _build_silver(settings, all_docs, ids, spark, storage, engine, run.run_id)
+    return {**run.stats, "run_id": str(run.run_id)}
+
+
+def _build_silver(settings: Settings, all_docs: bool, ids: list[str] | None, spark: SparkSession | None,
+                  storage: Storage, engine: Engine, run_id: uuid.UUID) -> dict:
     source = load_source_config(settings.path(settings.paths.vbpl_source))
     staging = settings.path(settings.paths.silver_staging)
 
@@ -329,7 +338,7 @@ def build_silver(
 
     uploaded = sync_to_bucket(storage, staging, chosen)
     uploaded += sync_table_to_bucket(storage, staging, "amendments")
-    update_postgres(engine, chosen, issues)
+    update_postgres(engine, chosen, issues, run_id)
     stats = {"documents": counts["documents"], "provisions": counts["provisions"],
              "relations": counts["document_relations"], "issues": counts["parse_issues"],
              "amendments": len(amendments),

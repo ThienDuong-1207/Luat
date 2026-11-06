@@ -18,9 +18,17 @@ type Summary = {
   n_thumbs_down: number;
   last_window_end: string | null;
   quarantine_by_stage: { stage: string; n: number }[];
-  quarantine_by_run: { run_id: string; started_at: string; status: string; n: number }[];
+  quarantine_by_run: { run_id: string; job: string; started_at: string; status: string; n: number }[];
   quarantine_without_run: number;
   last_run: { started_at: string; status: string } | null;
+  jobs: {
+    job: string; status: string; started_at: string; duration_s: number | null; data_crawled_at: string | null;
+  }[];
+  last_crawled_at: string | null;
+};
+
+const JOB_LABEL: Record<string, string> = {
+  crawl: "Crawl", build_silver: "Bronze → Silver", build_gold: "Silver → Gold", build_index: "Index",
 };
 
 const RUN_STATUS: Record<string, string> = {
@@ -87,6 +95,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <thead>
             <tr className="bg-yellow">
               <th scope="col" className="label border-2 border-ink p-2 text-left">Run</th>
+              <th scope="col" className="label border-2 border-ink p-2 text-left">Job</th>
               <th scope="col" className="label border-2 border-ink p-2 text-left">Trạng thái</th>
               <th scope="col" className="label border-2 border-ink p-2 text-right">Số bản ghi</th>
             </tr>
@@ -95,15 +104,51 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             {summary.quarantine_by_run.map((r) => (
               <tr key={r.run_id}>
                 <td className="border-2 border-ink p-2 font-mono">{DATETIME.format(new Date(r.started_at))}</td>
+                <td className="border-2 border-ink p-2">{JOB_LABEL[r.job] ?? r.job}</td>
                 <td className="border-2 border-ink p-2">{RUN_STATUS[r.status] ?? r.status}</td>
                 <td className="border-2 border-ink p-2 text-right font-mono">{r.n}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <p className="mt-2 text-sm text-muted">
-          {summary.quarantine_without_run} bản ghi sinh từ bước parse và build, không gắn với run crawl nào.
+        {summary.quarantine_without_run > 0 ? (
+          <p className="mt-2 text-sm text-muted">
+            {summary.quarantine_without_run} bản ghi chưa gắn run vì sinh trước khi có bảng job_runs. Chạy lại{" "}
+            <code>luatgt reparse --all</code> và <code>luatgt build-gold</code> để gắn.
+          </p>
+        ) : null}
+      </section>
+
+      <section className="rounded-brutal border-3 border-ink bg-surface p-4 shadow-brutal">
+        <h2 className="text-xl font-black">Lần chạy gần nhất của từng job</h2>
+        <p className="mt-1 text-sm">
+          Dữ liệu crawl gần nhất:{" "}
+          <span className="font-mono">
+            {summary.last_crawled_at ? DATETIME.format(new Date(summary.last_crawled_at)) : "chưa có"}
+          </span>
         </p>
+        <table className="mt-4 w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-yellow">
+              <th scope="col" className="label border-2 border-ink p-2 text-left">Job</th>
+              <th scope="col" className="label border-2 border-ink p-2 text-left">Bắt đầu</th>
+              <th scope="col" className="label border-2 border-ink p-2 text-left">Trạng thái</th>
+              <th scope="col" className="label border-2 border-ink p-2 text-right">Thời gian</th>
+            </tr>
+          </thead>
+          <tbody>
+            {summary.jobs.map((j) => (
+              <tr key={j.job}>
+                <td className="border-2 border-ink p-2">{JOB_LABEL[j.job] ?? j.job}</td>
+                <td className="border-2 border-ink p-2 font-mono">{DATETIME.format(new Date(j.started_at))}</td>
+                <td className="border-2 border-ink p-2">{RUN_STATUS[j.status] ?? j.status}</td>
+                <td className="border-2 border-ink p-2 text-right font-mono">
+                  {j.duration_s == null ? "–" : `${j.duration_s.toFixed(1)} s`}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </section>
     </main>
   );

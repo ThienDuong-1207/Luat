@@ -212,7 +212,90 @@ Ghi theo quy tắc mục 0.8 của `LuatGT_System_Design.md`. Mỗi mục: vấn
 - **Nghiệm thu 01/11/2026:** kích hoạt `dag_crawl_daily` trên DB và bucket rỗng, `dag_build` tự chạy theo Dataset, `dag_eval` sinh báo cáo. DB e2e có đúng số dòng của DB thật (9 văn bản, 4.651 điều khoản, 449 sửa đổi, 5.032 phiên bản, 906 violations, 3.545 chunks, 31 quarantine) và trùng md5 trên `violations`, `provision_versions`. Kết quả này cho thấy pipeline tái lập được, không chứng minh dữ liệu đúng.
 - **Eval:** Q&A chạy luồng thật bằng template, câu hỏi phụ trả lời theo đáp án chuẩn. "Dòng đầu đúng mức phạt" là thước đo thô: câu trả lời nhiều dòng có thể chứa mức đúng ở dòng sau. Bộ câu hỏi mới có 66/100 câu, đáp án chưa được nhóm đối chiếu; không tự sinh thêm cho đủ vì đáp án cần người kiểm. Parse accuracy và Extraction accuracy cần kiểm tay nên báo cáo ghi là chưa đo.
 
+## D-025. Cập nhật spec v1.1 theo reading list và FDE (06/11/2026)
+- **Bối cảnh:** đối chiếu dự án với reading list môn 72ITDS40303 (P01–P16) và sách FDE. Spec v1.0 còn lệch so với code đã chạy, và thiếu bằng chứng cho một số chủ đề của môn.
+- **Sửa cho khớp code:**
+  - Q-3 đã xử lý: mục 0 nay ghi đúng mục 17.
+  - Airflow chạy trên host (D-024).
+  - Mỗi event một file và có `max_client_ahead` (D-023).
+  - Bảng DAG có Dataset trigger, `bootstrap`, `dag_stream`, không có `follow_relations`.
+  - Ghi chú cổng 5433.
+- **Bổ sung vào spec:**
+  - 3.2: ba phương án kiến trúc, đường đi khi lỗi, giả định chi phí.
+  - 3.3: undercurrents.
+  - 5.2: lý do phân vùng theo `vbpl_id` và ngưỡng đổi khoá.
+  - 5.4: bảo đảm commit theo tầng.
+  - 8.8: lựa chọn RDD/DataFrame, cache, skew và bằng chứng Spark.
+  - 13.3, 13.4: ranh giới "đúng một lần", lưu giữ event, phương án Kafka.
+  - 16.1, 16.4, 16.5: tách dev/test, thẻ tái lập, chỉ số theo nhóm.
+  - 19: bảng NIST AI RMF.
+  - M11.
+- **Quyết định:** giữ kiến trúc A (lake Parquet + Postgres phục vụ). Không chuyển Silver sang Delta Lake ở giai đoạn 1, vì chưa có ghi đồng thời; điều kiện chuyển ghi ở spec 5.4.
+- **Phương án bị loại:**
+  - (B) chỉ Postgres: đủ cho kho 9 văn bản nhưng không mở rộng được.
+  - (C) Delta Lake ngay: thêm phụ thuộc khi chưa cần.
+- **Hệ quả:**
+  - Toàn bộ 66 câu eval hiện có được xem là tập dev. Các số Recall@5 87,9%, Citation accuracy 80,3% và Version correctness 90% là số dev, lạc quan (D-021). Báo cáo cuối cần số trên tập test mới.
+  - Role API phải ghi được `qa_sessions` nên không thể là chỉ đọc hoàn toàn.
+- **Cách kiểm chứng:** nghiệm thu M11 trong spec mục 17.
+- **Từ D-025 trở đi,** mỗi quyết định ghi đủ: bối cảnh, quyết định, phương án bị loại, hệ quả, cách kiểm chứng (P16).
+
+## D-026. Eval tách dev/test, thẻ tái lập, chỉ số theo nhóm (M11 mục 1, 06/11/2026)
+- **Bối cảnh:** spec 16.1, 16.4, 16.5 (D-025). 66 câu eval cũ vừa dùng để chỉnh tham số vừa dùng để báo cáo.
+- **Quyết định:**
+  - Mỗi câu trong `eval/questions.yaml` bắt buộc có `split: dev|test`; `run_eval.py` dừng nếu thiếu hoặc sai.
+  - 66 câu cũ đều là dev.
+  - Báo cáo tách phần test và phần dev. Khi chưa có test, báo cáo ghi rõ mọi số là số dev và không dùng làm kết quả cuối.
+  - Phần logic thuần nằm ở `luatgt.evaluation`, có test unit.
+- **Nhóm (spec 16.5):**
+  - Phương tiện: lấy từ bộ trích slot của chính hệ thống (`parse_question`), nên một câu bị nhận sai loại xe sẽ bị xếp sai nhóm.
+  - Văn bản nguồn: phần đầu của `provision_key`.
+  - Sửa đổi: điều khoản đáp án có hơn một version, hoặc câu có `expected_version_no`.
+  - Cách viết: lấy từ trường tuỳ chọn `wording`. Cả 66 câu chưa được gán nên nằm ở nhóm `chua_gan`; nhóm cần tự gán, không để máy đoán.
+- **Thẻ tái lập:**
+  - Commit và trạng thái dirty. Bỏ qua `eval/reports/`, vì báo cáo của lần trước sẽ làm cây bị sửa.
+  - Hash file `questions.yaml`.
+  - Hash nội dung tập test và dev: đổi comment không đổi hash, đổi câu hoặc đáp án thì đổi.
+  - Hash `settings.yaml` và `followup.yaml`.
+  - Phiên bản embedding, PySpark, PostgreSQL, pgvector.
+  - Số dòng và md5 của `provision_versions`, `violations`, chỉ tính trên cột nội dung (không gồm `created_at`/`updated_at`).
+  - Tiêu đề báo cáo bỏ giờ chạy; giờ chạy chỉ còn trong thẻ.
+- **Phương án bị loại:**
+  - Tách tập test thành file riêng: một file với trường `split` dễ kiểm tra trùng id hơn.
+  - Để Claude soạn câu test: Claude đã xem kết quả hệ thống nên không đáp ứng điều kiện "viết trước khi xem kết quả" của spec 16.1.
+- **Chưa làm (việc của nhóm):**
+  - Soạn ≥ 34 câu `split: test`.
+  - Gán `wording` cho các câu.
+- **Nghiệm thu ngày 06/11/2026:**
+  - 223/223 test pass, kể cả test integration của md5.
+  - `run_eval.py` chạy hai lần, mỗi lần khoảng 50 giây: báo cáo giống hệt nhau trừ dòng "Ngày chạy".
+  - Số liệu dev không đổi so với M10 (Recall@5 87,9%, Citation accuracy 80,3%, Version correctness 90%), nên việc viết lại không làm lệch cách tính.
+- **Quan sát từ bảng theo nhóm (dev, mẫu nhỏ):**
+  - Câu có đáp án ngoài NĐ 168/2024 (luật và nghị định hướng dẫn) chỉ đúng Recall@5 2/6.
+  - Citation accuracy của xe máy là 71,4% (15/21), so với 89,7% của ô tô.
+  - Cả hai chưa vượt ngưỡng đánh dấu, hoặc nhóm quá nhỏ để tính tỉ lệ; cần xem lại khi có tập test.
+- **Cổng Postgres:** Postgres.app (bản 18) trên máy chiếm `127.0.0.1:5433`, nên kết nối localhost không vào được container. `.env` trên máy này đổi sang `POSTGRES_PORT=5434`; `.env.example` giữ nguyên.
+
+## D-027. Bảng `job_runs`, run_id cho quarantine, độ tươi dữ liệu (M11 mục 2, 06/11/2026)
+- **Bối cảnh:** spec 3.3. 30/31 bản ghi quarantine không có `run_id` (D-023), vì chỉ crawl có `crawl_runs`. Không có chỗ nào ghi thời gian chạy của các job build hay độ tươi của dữ liệu.
+- **Quyết định:**
+  - Migration `0004` thêm bảng `job_runs` (job, started_at, finished_at, status, error, stats, data_crawled_at).
+  - `build_silver`, `build_gold` và `build_index` chạy trong `job_run(...)` (`luatgt.common.job_runs`). Job lỗi vẫn được ghi `failed` kèm lỗi, rồi ném lại lỗi để Airflow thấy task fail.
+  - Quarantine của stage parse, extract và amend ghi `run_id` của job sinh ra nó; `quarantine.run_id` trỏ tới `crawl_runs` (stage crawl) hoặc `job_runs` (các stage khác).
+  - `data_crawled_at` = `max(documents.last_crawled_at)` lúc job bắt đầu, cho biết Gold được dựng từ dữ liệu crawl của ngày nào.
+  - `/api/stats/summary` thêm `jobs` (lần chạy gần nhất của từng job, `duration_s`) và `last_crawled_at`. `quarantine_by_run` gộp cả run crawl và run build, chỉ đếm bản ghi chưa xử lý.
+  - Dashboard có thêm cột Job và bảng "Lần chạy gần nhất của từng job".
+- **Phương án bị loại:**
+  - Ghi run build vào `crawl_runs`: bảng này có cột riêng của crawl (`selector_version`, `pdf_downloaded`) và CHECK status có `blocked`, `partial`.
+  - Thêm khoá ngoại cho `quarantine.run_id`: không làm được, vì một cột trỏ tới hai bảng.
+  - Đặt `NOT NULL` cho `run_id`: bản ghi cũ sẽ chặn migration. Thay vào đó có test bảo đảm mọi bản ghi mới đều có `run_id`.
+- **Chưa làm:** `dag_stream` và `dag_eval` chưa ghi `job_runs`. Streaming đã có checkpoint và `numRowsDroppedByWatermark` trong log.
+- **Nghiệm thu ngày 06/11/2026 trên DB thật:**
+  - Chạy `reparse --all`, `build-gold`, `build-index`. Thời gian chạy: build_silver 12,7 s, build_gold 8,1 s, build_index 15,7 s.
+  - Cả 31 bản ghi quarantine đều có `run_id` (parse 10, amend 19, extract 1, crawl 1).
+  - md5 của `provision_versions` (`5e0d62151d5d`) và `violations` (`8be2d7f3ce0f`) trùng lần đo ở D-026, nên dữ liệu không đổi.
+  - 225/225 test pass. Dashboard đã xem trên trình duyệt, console không có lỗi.
+
 ## Câu hỏi mở (cần nhóm quyết định trước milestone liên quan)
 - **Q-1 (M9):** trường `topic` của event: đã áp dụng tạm theo D-021, chờ nhóm xác nhận.
 - **Q-4:** NĐ 336/2025/NĐ-CP sửa NĐ 168/2024/NĐ-CP theo metadata vbpl.vn nhưng không có trong seed, cùng NĐ 319/2026 và Luật 143/2025. Có thêm vào kho không?
-- **Q-3:** mục 0 của spec ghi "Milestone ở mục 14", thực tế là mục 17.

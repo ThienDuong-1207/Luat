@@ -1,36 +1,51 @@
-# Bộ câu hỏi đánh giá retrieval (spec 16.1). BẢN NHÁP do Claude soạn từ dữ liệu đã parse:
-# đáp án CHƯA được nhóm đối chiếu với văn bản gốc. Spec cần ≥ 100 câu (M10); M6 cần ≥ 30.
+# Bộ câu hỏi đánh giá (spec 16.1). BẢN NHÁP do Claude soạn từ dữ liệu đã parse:
+# đáp án CHƯA được nhóm đối chiếu với văn bản gốc. Spec cần ≥ 100 câu.
+#
+# split (bắt buộc): dev | test (spec 16.1, D-026).
+#   dev  = được phép dùng để chỉnh tham số. 66 câu dưới đây đã dùng để chọn query_expansions (D-021)
+#          nên đều là dev.
+#   test = câu MỚI, do thành viên không chỉnh tham số soạn TRƯỚC khi chạy hệ thống. Sau khi có số đầu
+#          tiên thì không sửa câu test nữa (thẻ tái lập ghi hash của tập test để phát hiện sửa).
+# wording (tuỳ chọn): doi_thuong | thuat_ngu. Dùng cho bảng chỉ số theo nhóm (spec 16.5);
+#   thiếu thì xếp vào nhóm "chua_gan".
 - id: q001
+  split: dev
   question: Lái ô tô mà nồng độ cồn trên 80 miligam thì bị phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D6/K11/Pa
 - id: q002
+  split: dev
   question: Đi xe máy uống rượu đo ra hơn 0,4 mg/lít khí thở phạt thế nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D7/K9/Pd
 - id: q003
+  split: dev
   question: Ô tô có cồn từ 50 đến 80 mg/100ml máu bị xử lý ra sao?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D6/K9/Pa
 - id: q004
+  split: dev
   question: Xe máy nồng độ cồn 60 miligam phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D7/K8/Pb
 - id: q005
+  split: dev
   question: Uống một lon bia rồi lái ô tô, nồng độ cồn thấp dưới 50 mg có bị phạt không?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D6/K6/Pc
 - id: q006
+  split: dev
   question: Xe máy có nồng độ cồn dưới 50 miligam thì mức phạt là gì?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D7/K6/Pa
 - id: q007
+  split: dev
   question: Đi xe đạp sau khi uống rượu có bị phạt không?
   as_of_date: '2026-10-20'
   expected_provision_keys:
@@ -38,203 +53,243 @@
   - 168-2024-ND-CP/D9/K3/Pd
   - 168-2024-ND-CP/D9/K4/Pb
 - id: q008
+  split: dev
   question: Không chịu thổi nồng độ cồn khi lái ô tô bị xử phạt thế nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D6/K11/Pb
 - id: q009
+  split: dev
   question: Từ chối kiểm tra nồng độ cồn khi đi xe máy phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D7/K9/Pdd
 - id: q010
+  split: dev
   question: Ô tô chạy quá tốc độ 7 km/h phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D6/K3/Pa
 - id: q011
+  split: dev
   question: Ô tô chạy quá tốc độ 15 km/h bị phạt thế nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D6/K5/Pdd
 - id: q012
+  split: dev
   question: Xe ô tô vượt tốc độ 30 km/h thì phạt ra sao?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D6/K6/Pa
 - id: q013
+  split: dev
   question: Ô tô chạy quá tốc độ trên 35 km/h bị phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D6/K7/Pa
 - id: q014
+  split: dev
   question: Xe máy chạy quá tốc độ 8 km/h phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D7/K2/Pb
 - id: q015
+  split: dev
   question: Xe mô tô vượt tốc độ 15 km/h thì sao?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D7/K4/Pa
 - id: q016
+  split: dev
   question: Xe máy chạy quá tốc độ hơn 20 km/h có bị tước bằng không?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D7/K8/Pa
 - id: q017
+  split: dev
   question: Ô tô vượt đèn đỏ phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D6/K9/Pb
 - id: q018
+  split: dev
   question: Xe máy vượt đèn đỏ bị phạt thế nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D7/K7/Pc
 - id: q019
+  split: dev
   question: Xe đạp vượt đèn đỏ có bị phạt không?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D9/K2/Pdd
 - id: q020
+  split: dev
   question: Vừa lái ô tô vừa cầm điện thoại bị phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D6/K5/Ph
 - id: q021
+  split: dev
   question: Đi xe máy nghe điện thoại phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D7/K4/Pdd
 - id: q022
+  split: dev
   question: Không đội mũ bảo hiểm khi đi xe máy phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D7/K2/Ph
 - id: q023
+  split: dev
   question: Chở bạn ngồi sau không đội mũ bảo hiểm thì sao?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D7/K2/Pi
 - id: q024
+  split: dev
   question: Người ngồi sau xe máy không đội mũ có bị phạt không?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D12/K5/Pb
 - id: q025
+  split: dev
   question: Lạng lách đánh võng bằng xe máy phạt thế nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D7/K9/Pa
 - id: q026
+  split: dev
   question: Không có bằng lái xe máy thì bị phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D18/K5/Pa
   - 168-2024-ND-CP/D18/K7/Pb
 - id: q027
+  split: dev
   question: Lái ô tô không có giấy phép lái xe bị xử lý thế nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D18/K9/Pb
 - id: q028
+  split: dev
   question: Không có bảo hiểm xe máy bắt buộc thì phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D18/K2/Pb
 - id: q029
+  split: dev
   question: Lái ô tô dương tính với ma túy bị phạt thế nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D6/K11/Pc
 - id: q030
+  split: dev
   question: Xe máy có chất ma túy trong người bị xử lý ra sao?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D7/K9/Pe
 - id: q031
+  split: dev
   question: Ô tô đi lên vỉa hè bị phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D6/K6/Pd
 - id: q032
+  split: dev
   question: Đi ngược chiều trên đường cao tốc bằng ô tô phạt thế nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D6/K11/Pdd
 - id: q033
+  split: dev
   question: Xe máy đi vào đường cao tốc có bị phạt không?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D7/K7/Pb
 - id: q034
+  split: dev
   question: Phơi lúa trên đường bị phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D12/K2/Pg
 - id: q035
+  split: dev
   question: Bán hàng rong dưới lòng đường bị phạt thế nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D12/K2/Pe
 - id: q036
+  split: dev
   question: Đạp xe dàn hàng ngang ba người có bị phạt không?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D9/K1/Pg
 - id: q037
+  split: dev
   question: Xe khách không gắn phù hiệu bị phạt thế nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D20/K7
 - id: q038
+  split: dev
   question: Chủ xe giao xe cho người không đủ điều kiện lái bị phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D32/K14/Pi
 - id: q039
+  split: dev
   question: Tổ chức đua xe trái phép bị phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D35/K2
   - 168-2024-ND-CP/D35/K3
 - id: q040
+  split: dev
   question: Quay đầu xe ô tô ở nơi có biển cấm quay đầu phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 168-2024-ND-CP/D6/K4/Pk
 - id: q041
+  split: dev
   question: Luật quy định độ tuổi của người lái xe như thế nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 36-2024-QH15/D59/K1
 - id: q042
+  split: dev
   question: Người ngồi trên ô tô có bắt buộc thắt dây an toàn không?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 36-2024-QH15/D10/K2
 - id: q043
+  split: dev
   question: Xe máy được chở tối đa mấy người?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 36-2024-QH15/D33/K1
 - id: q044
+  split: dev
   question: Đường bộ được phân loại theo cấp quản lý gồm những loại nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 35-2024-QH15/D8/K1
 - id: q045
+  split: dev
   question: Thiết bị phát tín hiệu của xe ưu tiên gồm những gì?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 151-2024-ND-CP/D17/K1
 - id: q046
+  split: dev
   question: Phương tiện giao thông thông minh bị thu hồi giấy phép khi nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
   - 151-2024-ND-CP/D25/K5
 - id: q047
+  split: dev
   question: Dừng xe ở dải dừng xe khẩn cấp trên cao tốc khi hỏng xe mà không bật đèn khẩn cấp thì phạt thế nào?
   as_of_date: '2026-08-01'
   expected_provision_keys:
@@ -242,6 +297,7 @@
   expected_version_no: 1
   expected_version_source: 168/2024/NĐ-CP
 - id: q048
+  split: dev
   question: Dừng xe ở dải dừng xe khẩn cấp trên cao tốc khi hỏng xe mà không bật đèn khẩn cấp thì phạt thế nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
@@ -249,6 +305,7 @@
   expected_version_no: 2
   expected_version_source: 238/2026/NĐ-CP
 - id: q049
+  split: dev
   question: Ô tô chuyển làn không đảm bảo khoảng cách an toàn với xe xung quanh bị phạt ra sao?
   as_of_date: '2026-08-01'
   expected_provision_keys:
@@ -256,6 +313,7 @@
   expected_version_no: 1
   expected_version_source: 168/2024/NĐ-CP
 - id: q050
+  split: dev
   question: Ô tô chuyển làn không đảm bảo khoảng cách an toàn với xe xung quanh bị phạt ra sao?
   as_of_date: '2026-10-20'
   expected_provision_keys:
@@ -263,6 +321,7 @@
   expected_version_no: 2
   expected_version_source: 238/2026/NĐ-CP
 - id: q051
+  split: dev
   question: Xe máy chuyển làn liên tục qua nhiều làn đường bị phạt thế nào?
   as_of_date: '2026-08-01'
   expected_provision_keys:
@@ -270,6 +329,7 @@
   expected_version_no: 1
   expected_version_source: 168/2024/NĐ-CP
 - id: q052
+  split: dev
   question: Xe máy chuyển làn liên tục qua nhiều làn đường bị phạt thế nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
@@ -277,6 +337,7 @@
   expected_version_no: 2
   expected_version_source: 238/2026/NĐ-CP
 - id: q053
+  split: dev
   question: Chở trẻ em dưới 10 tuổi ngồi cùng hàng ghế với người lái ô tô bị phạt không?
   as_of_date: '2026-08-01'
   expected_provision_keys:
@@ -284,6 +345,7 @@
   expected_version_no: 1
   expected_version_source: 168/2024/NĐ-CP
 - id: q054
+  split: dev
   question: Chở trẻ em dưới 10 tuổi ngồi cùng hàng ghế với người lái ô tô bị phạt không?
   as_of_date: '2026-10-20'
   expected_provision_keys:
@@ -291,6 +353,7 @@
   expected_version_no: 2
   expected_version_source: 238/2026/NĐ-CP
 - id: q055
+  split: dev
   question: Xe vận tải nội bộ chạy quá thời gian lái xe liên tục bị phạt thế nào?
   as_of_date: '2026-08-01'
   expected_provision_keys:
@@ -298,6 +361,7 @@
   expected_version_no: 1
   expected_version_source: 168/2024/NĐ-CP
 - id: q056
+  split: dev
   question: Xe vận tải nội bộ chạy quá thời gian lái xe liên tục bị phạt thế nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
@@ -305,6 +369,7 @@
   expected_version_no: 2
   expected_version_source: 238/2026/NĐ-CP
 - id: q057
+  split: dev
   question: Người 17 tuổi lái xe mô tô bị xử phạt thế nào?
   as_of_date: '2026-08-01'
   expected_provision_keys:
@@ -312,6 +377,7 @@
   expected_version_no: 1
   expected_version_source: 168/2024/NĐ-CP
 - id: q058
+  split: dev
   question: Người 17 tuổi lái xe mô tô bị xử phạt thế nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
@@ -319,6 +385,7 @@
   expected_version_no: 2
   expected_version_source: 238/2026/NĐ-CP
 - id: q059
+  split: dev
   question: Chở hàng trên nóc thùng xe tải bị phạt bao nhiêu?
   as_of_date: '2026-08-01'
   expected_provision_keys:
@@ -326,6 +393,7 @@
   expected_version_no: 1
   expected_version_source: 168/2024/NĐ-CP
 - id: q060
+  split: dev
   question: Chở hàng trên nóc thùng xe tải bị phạt bao nhiêu?
   as_of_date: '2026-10-20'
   expected_provision_keys:
@@ -333,6 +401,7 @@
   expected_version_no: 2
   expected_version_source: 238/2026/NĐ-CP
 - id: q061
+  split: dev
   question: Vận chuyển hàng không chằng buộc an toàn bằng xe tải bị phạt thế nào?
   as_of_date: '2026-08-01'
   expected_provision_keys:
@@ -340,6 +409,7 @@
   expected_version_no: 1
   expected_version_source: 168/2024/NĐ-CP
 - id: q062
+  split: dev
   question: Vận chuyển hàng không chằng buộc an toàn bằng xe tải bị phạt thế nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:
@@ -347,6 +417,7 @@
   expected_version_no: 2
   expected_version_source: 238/2026/NĐ-CP
 - id: q063
+  split: dev
   question: Chở hàng vượt trọng tải xe tải bị phạt ra sao?
   as_of_date: '2026-08-01'
   expected_provision_keys:
@@ -354,6 +425,7 @@
   expected_version_no: 1
   expected_version_source: 168/2024/NĐ-CP
 - id: q064
+  split: dev
   question: Chở hàng vượt trọng tải xe tải bị phạt ra sao?
   as_of_date: '2026-10-20'
   expected_provision_keys:
@@ -361,6 +433,7 @@
   expected_version_no: 2
   expected_version_source: 238/2026/NĐ-CP
 - id: q065
+  split: dev
   question: Xe ô tô đầu kéo không lắp thiết bị ghi hình người lái bị phạt thế nào?
   as_of_date: '2026-08-01'
   expected_provision_keys:
@@ -368,6 +441,7 @@
   expected_version_no: 1
   expected_version_source: 168/2024/NĐ-CP
 - id: q066
+  split: dev
   question: Xe ô tô đầu kéo không lắp thiết bị ghi hình người lái bị phạt thế nào?
   as_of_date: '2026-10-20'
   expected_provision_keys:

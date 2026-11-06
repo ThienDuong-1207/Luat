@@ -207,14 +207,26 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None,
             quarantine = conn.execute(text("""
                 SELECT stage, count(*) AS n FROM quarantine WHERE NOT COALESCE(resolved, false)
                 GROUP BY stage ORDER BY n DESC""")).mappings().all()
+            # Run crawl (crawl_runs) và run build (job_runs) chung một danh sách (D-027)
             by_run = conn.execute(text("""
-                SELECT r.run_id, r.started_at, r.status, count(q.id) AS n
-                FROM crawl_runs r LEFT JOIN quarantine q ON q.run_id = r.run_id
-                GROUP BY r.run_id ORDER BY r.started_at DESC LIMIT 10""")).mappings().all()
-            unassigned = conn.execute(text("SELECT count(*) FROM quarantine WHERE run_id IS NULL")).scalar_one()
+                WITH runs AS (
+                    SELECT run_id, 'crawl' AS job, started_at, status FROM crawl_runs
+                    UNION ALL SELECT run_id, job, started_at, status FROM job_runs)
+                SELECT r.run_id, r.job, r.started_at, r.status, count(q.id) AS n
+                FROM runs r LEFT JOIN quarantine q ON q.run_id = r.run_id AND NOT COALESCE(q.resolved, false)
+                GROUP BY r.run_id, r.job, r.started_at, r.status
+                ORDER BY r.started_at DESC LIMIT 10""")).mappings().all()
+            unassigned = conn.execute(text("""SELECT count(*) FROM quarantine
+                                              WHERE run_id IS NULL AND NOT COALESCE(resolved, false)""")).scalar_one()
+            jobs = conn.execute(text("""
+                SELECT DISTINCT ON (job) job, run_id, status, started_at, finished_at,
+                       extract(epoch FROM finished_at - started_at)::float8 AS duration_s, data_crawled_at
+                FROM job_runs ORDER BY job, started_at DESC""")).mappings().all()
+            last_crawled_at = conn.execute(text("SELECT max(last_crawled_at) FROM documents")).scalar()
         return {**dict(totals), "quarantine_by_stage": [dict(r) for r in quarantine],
                 "quarantine_by_run": [dict(r) for r in by_run], "quarantine_without_run": unassigned,
-                "last_run": dict(by_run[0]) if by_run else None}
+                "last_run": dict(by_run[0]) if by_run else None,
+                "jobs": [dict(r) for r in jobs], "last_crawled_at": last_crawled_at}
 
     @app.get("/api/health")
     def health() -> dict:
